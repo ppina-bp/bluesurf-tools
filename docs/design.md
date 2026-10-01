@@ -58,6 +58,9 @@ Auth is a cookie session after `POST /api/login` (the SPA does this; **we do not
 | `getKanban(projectCode, filters)` | `POST /api/project/{code}/kanban?skipWorkItems=false` | Board + work items. |
 | `listPriorities()` | `GET /api/Enums/WorkItemPriority` | 5=Highest … 1=Lowest. |
 | `listTypes()` | `GET /api/Enums/WorkItemType` | userStory, bug, issue, task, … |
+| `getBoards(projectCode)` | `POST /api/project/{code}/kanban?skipWorkItems=true` | Statuses only. One board per work item `type` (0 user story, 1, 3 task seen), each with its **own** status ids. `destinations` is empty: no transition rules. |
+| `moveWorkItemOnBoard(id, statusId, position)` | `POST /api/WorkItem/{workItemId}/moveOnBoard/{statusId}/{position}` | No body. `position` is the slot in the target column (UI drops sent 2 and 3; we send 0 = top). Returns the updated work item. Captured 2026-09-28 moving RLD-387 and RLD-388. |
+| project hub | SignalR `wss://…/api/hub/projectHub` | After a move the UI invokes `JoinGroup [code]` then `ProjectUpdated [code, workItemId]` so other open boards refresh. |
 
 Kanban filter body (empty arrays mean “all”):
 

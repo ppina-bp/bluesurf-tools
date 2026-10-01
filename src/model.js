@@ -177,6 +177,36 @@ export function toTicketNote(item) {
   ].join("\n");
 }
 
+function normalizeStatus(name) {
+  return String(name ?? "")
+    .toLowerCase()
+    .replace(/[()]/g, " ")
+    .replace(/\bdev\b/g, "development")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Each work item type has its own board with its own status ids, so resolve
+// the name on the board for that type. Accepts loose names ("dev done").
+export function findBoardStatus(boards, type, query) {
+  const board = (boards ?? []).find((candidate) => candidate.type === type);
+  if (!board) throw new Error(`No board for work item type ${type}`);
+  const statuses = board.statuses ?? [];
+  const wanted = normalizeStatus(query);
+  const exact = statuses.filter((status) => normalizeStatus(status.name) === wanted);
+  if (exact.length === 1) return exact[0];
+  const words = wanted.split(" ");
+  const partial = statuses.filter((status) => {
+    const parts = normalizeStatus(status.name).split(" ");
+    return words.every((word) => parts.some((part) => part.startsWith(word)));
+  });
+  if (partial.length === 1) return partial[0];
+  const names = (list) => list.map((status) => status.name.trim()).join(", ");
+  throw new Error(
+    partial.length
+      ? `"${query}" matches ${names(partial)}. Be more specific.`
+      : `No status "${query}". Options: ${names(statuses)}`,
+  );
 export function isDoneStatus(status) {
   return String(status ?? "").toLowerCase().includes("done");
 }

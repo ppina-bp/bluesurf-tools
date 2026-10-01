@@ -1,4 +1,5 @@
 import {
+  findBoardStatus,
   flattenKanbanWorkItems,
   listMyCurrentSprintWorkItems,
   parseTicketKey,
@@ -64,6 +65,35 @@ export function createClient({ request, origin = "https://surf.bluepeople.com" }
         ...emptyKanbanFilter,
         ...filters,
       });
+    },
+    getBoards(projectCode) {
+      return api("POST", `/api/project/${projectCode}/kanban?skipWorkItems=true`, {
+        ...emptyKanbanFilter,
+      });
+    },
+    moveWorkItemOnBoard(workItemId, statusId, position = 0) {
+      return api("POST", `/api/WorkItem/${workItemId}/moveOnBoard/${statusId}/${position}`);
+    },
+    async planMove(code, statusQuery) {
+      const { projectCode } = parseTicketKey(code);
+      const item = await this.getWorkItem(code);
+      const target = findBoardStatus(await this.getBoards(projectCode), item.type, statusQuery);
+      return {
+        code,
+        projectCode,
+        workItemId: item.id,
+        from: item.statusName,
+        to: target.name.trim(),
+        statusId: target.id,
+        unchanged: item.statusId === target.id,
+      };
+    },
+    async moveWorkItem(plan) {
+      const updated = await this.moveWorkItemOnBoard(plan.workItemId, plan.statusId);
+      if (updated?.statusId !== plan.statusId) {
+        throw new Error(`${plan.code} did not move: Surf reports ${updated?.statusName ?? "no status"}`);
+      }
+      return updated;
     },
     async listMyWorkItems(projectCode) {
       const user = await this.getCurrentUser();

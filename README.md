@@ -81,6 +81,19 @@ npm run sprint
 npm run sprint -- RLD 2026-09-16
 ```
 
+## `/bluesurf-move`
+
+Move a ticket to another status on the board. The team sees the change, so the skill always previews and asks first.
+
+**Say:** “move RLD-388 to dev done”, “I finished 388”, “mark 387 as blocked”.
+
+**Does:** looks up the ticket's type (each type has its own board and status ids), matches the status name loosely, and prints the planned move. With `--yes` it moves the card to the top of that column (`POST /api/WorkItem/{id}/moveOnBoard/{statusId}/0`), checks Surf's answer, and sends the `ProjectUpdated` hub message the board UI sends so teammates' open boards refresh.
+
+```bash
+npm run move -- RLD-388 "dev done"         # preview only, changes nothing
+npm run move -- RLD-388 "dev done" --yes   # move it
+```
+
 ## `/bluesurf-mine`
 
 List the tickets assigned to you across **every** sprint. Read-only; nothing is written to the vault.
@@ -103,6 +116,7 @@ npm run mine -- --json  # machine-readable, for agents
 | `npm run ticket -- RLD-336` | Write ticket note + attachments |
 | `npm run ticket-done -- RLD-336` | Delete that ticket folder from the vault |
 | `npm run sprint` | Write or rewrite the current-sprint note |
+| `npm run move -- RLD-388 "dev done"` | Preview a status move; add `--yes` to move |
 | `npm run mine` | List your open tickets across all sprints (`--all`, `--json`) |
 | `npm test` | Unit tests |
 | `npm run spike` | Record Surf XHR (only if the API map in `docs/design.md` is stale) |

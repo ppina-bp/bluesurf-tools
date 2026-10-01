@@ -100,8 +100,49 @@ export async function createSessionRequest({
     return Buffer.from(await response.body());
   }
 
+  // The board UI tells other viewers to refresh through the SignalR project
+  // hub after a move; do the same so teammates' open boards update.
+  async function notifyProjectUpdated(projectCode, workItemId) {
+    const page = context.pages()[0] ?? (await context.newPage());
+    await page.evaluate(
+      async ({ projectCode, workItemId }) => {
+        const separator = "\u001e";
+        const negotiate = await fetch("/api/hub/projectHub/negotiate?negotiateVersion=1", {
+          method: "POST",
+        }).then((response) => response.json());
+        const id = negotiate.connectionToken ?? negotiate.connectionId;
+        const url = `${location.origin.replace(/^http/, "ws")}/api/hub/projectHub?id=${id}`;
+        await new Promise((resolve, reject) => {
+          const socket = new WebSocket(url);
+          const timer = setTimeout(() => {
+            socket.close();
+            reject(new Error("project hub timed out"));
+          }, 5000);
+          const send = (message) => socket.send(JSON.stringify(message) + separator);
+          socket.onerror = () => {
+            clearTimeout(timer);
+            reject(new Error("project hub connection failed"));
+          };
+          socket.onopen = () => send({ protocol: "json", version: 1 });
+          socket.onmessage = () => {
+            socket.onmessage = null;
+            send({ arguments: [projectCode], invocationId: "0", target: "JoinGroup", type: 1 });
+            send({ arguments: [projectCode, workItemId], invocationId: "1", target: "ProjectUpdated", type: 1 });
+            setTimeout(() => {
+              clearTimeout(timer);
+              socket.close();
+              resolve();
+            }, 500);
+          };
+        });
+      },
+      { projectCode, workItemId },
+    );
+  }
+
   return {
     request,
+    notifyProjectUpdated,
     async close() {
       // Keep any cookie Surf rotated during this run.
       await saveCookieJar(context).catch(() => {});
@@ -114,6 +155,7 @@ export async function createSessionClient(options) {
   const session = await createSessionRequest(options);
   return {
     ...createClient({ request: session.request, origin: options?.origin }),
+    notifyProjectUpdated: session.notifyProjectUpdated,
     close: session.close,
   };
 }
