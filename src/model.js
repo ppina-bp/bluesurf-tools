@@ -207,6 +207,8 @@ export function findBoardStatus(boards, type, query) {
       ? `"${query}" matches ${names(partial)}. Be more specific.`
       : `No status "${query}". Options: ${names(statuses)}`,
   );
+}
+
 export function isDoneStatus(status) {
   return String(status ?? "").toLowerCase().includes("done");
 }
