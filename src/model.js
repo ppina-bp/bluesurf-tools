@@ -155,11 +155,25 @@ export function toSprintNote(rows, { date, ticketsDir = "RLand/Tickets" } = {}) 
   ].join("\n");
 }
 
+function commentBody(entry) {
+  const text = entry.comment ?? "";
+  const images = (entry.files ?? []).filter((file) => file.isImage).length;
+  const imageNote = images === 0 ? "" : images === 1 ? "Image attached." : `${images} images attached.`;
+  if (text && imageNote) return `${text}\n\n${imageNote}`;
+  return text || imageNote;
+}
+
+function commentBlocks(comments) {
+  return (comments ?? [])
+    .filter((entry) => entry && !entry.deleted)
+    .map((entry) => `**${entry.createdByFullName ?? ""}**\n\n${commentBody(entry)}`);
+}
+
 export function toTicketNote(item) {
   const tags = (item.tags ?? []).map((tag) => tag.tagName).filter(Boolean);
   const attachments = (item.files ?? []).map((file) => file.name).filter(Boolean);
   const estimate = item.estimatedEffort ?? 0;
-  return [
+  const lines = [
     `# ${item.code} — ${item.name}`,
     "",
     `**Priority:** ${item.priorityName ?? ""}`,
@@ -174,7 +188,11 @@ export function toTicketNote(item) {
     "",
     item.description ?? "",
     "",
-  ].join("\n");
+  ];
+  if (tags.includes("Bugs Detected")) {
+    lines.push("## Comments", "", commentBlocks(item.comments).join("\n\n"), "");
+  }
+  return lines.join("\n");
 }
 
 function normalizeStatus(name) {

@@ -27,16 +27,16 @@ When the session expires, the skills run `npm run login` for you: a window opens
 
 ## `/bluesurf-ticket`
 
-Pull one Surf work item into Obsidian, then stop. Do not start coding until you choose grill or implement.
+Pull one Surf work item into Obsidian, then stop. A ticket tagged Bugs Detected carries regression comments to fix. Any other ticket waits until you choose grill or implement.
 
 **Say:** `/bluesurf-ticket RLD-336`, or “pull RLD-336”.
 
 **Does:**
 
 1. Reuses the saved session in headless Chromium.
-2. Writes `RLand/Tickets/RLD-336/detail.md` (title, priority, type, status, sprint, estimate, tags, attachment names, HTML description).
+2. Writes `RLand/Tickets/RLD-336/detail.md` (title, priority, type, status, sprint, estimate, tags, attachment names, HTML description). A `Bugs Detected` tag also writes the comments.
 3. Downloads files into `RLand/Tickets/RLD-336/attachments/`.
-4. Stops and asks **grill vs implement**.
+4. Stops. On `Bugs Detected`, the comments are the regressions to fix. Otherwise asks **grill vs implement**.
 
 **Complete the ticket** when the work is finished:
 
@@ -124,7 +124,17 @@ npm run mine -- --json  # machine-readable, for agents
 ## Safety
 
 - Do not commit `.chrome-profile/`, `.surf-cookies.json`, `.scratch/`, or `.env` (`.surf-cookies.json` is your live Surf session; it is written with mode 600)
+- Share this repo by **git clone**, not by copying the whole checkout folder (that folder can hold your session and spike captures)
 - `BLUESURF_HEADED=1` shows the browser window, for debugging
 - Do not put passwords in this repo
 - Never `POST /api/login` from our code
 - Never push unless you explicitly ask (or say **commit and push** on a pulled ticket)
+- Prefer the **skills** for move and ticket completion: `bluesurf-move` previews and asks before changing the board; raw `npm run move … --yes` skips that guardrail
+
+### For colleagues
+
+Each person clones the repo, copies `.env.example` to `.env`, sets their own `OBSIDIAN_VAULT`, and runs `npm run login` so the Surf session stays on their machine. Link the skills from [`docs/setup.md`](docs/setup.md); optional Cursor/Codex rules live in [`rules/`](rules/).
+
+- **Bugs Detected** tickets skip the grill question: the agent implements from the ticket’s **Comments** (copied from Surf). Treat pulled tickets like Surf content you already trust.
+- **Attachments** download into the vault under `RLand/Tickets/<code>/attachments/` (your vault may sync via iCloud or similar).
+- **Commit and push** on a pulled ticket is explicit permission to push the implementation repo for that ticket.

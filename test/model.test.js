@@ -279,6 +279,74 @@ describe("toTicketNote", () => {
     assert.match(note, /Quartering, Lot, Parcel/);
   });
 
+  it("includes regression comments when the ticket is tagged Bugs Detected", () => {
+    const item = {
+      ...flattenKanbanWorkItems(kanban)[1],
+      tags: [{ tagName: "Bugs Detected" }],
+      comments: [
+        {
+          comment: "<p>Saving a tract clears the legal location.</p>",
+          createdByFullName: "Ada Lovelace",
+          deleted: false,
+        },
+      ],
+    };
+    const note = toTicketNote(item);
+    assert.match(note, /## Comments\n\n\*\*Ada Lovelace\*\*\n\n<p>Saving a tract clears the legal location\.<\/p>/);
+  });
+
+  it("leaves comments off the note when the ticket is not tagged Bugs Detected", () => {
+    const item = {
+      ...flattenKanbanWorkItems(kanban)[1],
+      comments: [
+        {
+          comment: "<p>Saving a tract clears the legal location.</p>",
+          createdByFullName: "Ada Lovelace",
+          deleted: false,
+        },
+      ],
+    };
+    assert.doesNotMatch(toTicketNote(item), /## Comments|Ada Lovelace/);
+  });
+
+  it("omits deleted regression comments", () => {
+    const item = {
+      ...flattenKanbanWorkItems(kanban)[1],
+      tags: [{ tagName: "Bugs Detected" }],
+      comments: [
+        {
+          comment: "<p>Old note.</p>",
+          createdByFullName: "Grace Hopper",
+          deleted: true,
+        },
+        {
+          comment: "<p>Saving a tract clears the legal location.</p>",
+          createdByFullName: "Ada Lovelace",
+          deleted: false,
+        },
+      ],
+    };
+    const note = toTicketNote(item);
+    assert.match(note, /Ada Lovelace/);
+    assert.doesNotMatch(note, /Grace Hopper|Old note/);
+  });
+
+  it("notes an image when a regression comment has no text", () => {
+    const item = {
+      ...flattenKanbanWorkItems(kanban)[1],
+      tags: [{ tagName: "Bugs Detected" }],
+      comments: [
+        {
+          comment: "",
+          createdByFullName: "Ada Lovelace",
+          deleted: false,
+          files: [{ id: "file-1", isImage: true }],
+        },
+      ],
+    };
+    assert.match(toTicketNote(item), /\*\*Ada Lovelace\*\*\n\nImage attached\./);
+  });
+
   it("lists attachment names when the work item has files", () => {
     const item = {
       ...flattenKanbanWorkItems(kanban)[1],

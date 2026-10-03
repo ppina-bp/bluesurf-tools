@@ -50,7 +50,9 @@ function shouldRecord(url, resourceType, headers) {
 function redact(body) {
   if (typeof body !== "string") return body;
   return body
-    .replace(/"(access_token|refresh_token|token|authorization|password)"\s*:\s*"[^"]*"/gi, '"$1":"[redacted]"')
+    .replace(/"(access_token|refresh_token|id_token|token|authorization|password)"\s*:\s*"[^"]*"/gi, '"$1":"[redacted]"')
+    .replace(/"1\/\/[A-Za-z0-9\-_]+"/g, '"[redacted]"')
+    .replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/g, "[redacted]")
     .slice(0, 4000);
 }
 
