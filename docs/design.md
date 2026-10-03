@@ -7,7 +7,7 @@ Local client and agent skills for **your** Blue Surf session. No public API. No 
 | Topic | Choice |
 | --- | --- |
 | Data access | Persistent Chrome profile + replay the SPA’s private JSON APIs. DOM scrape is fallback only. |
-| After `/bluesurf-ticket` | Write Obsidian note + attachments, then **stop** and ask grill vs implement. Do not start coding. |
+| After `/bluesurf-ticket` | Write Obsidian note + attachments, then **stop**. If the note is tagged Bugs Detected, the comments are the regressions to fix. Otherwise ask grill vs implement. |
 | After the ticket is complete | Delete `RLand/Tickets/RLD-xxx/` entirely. "The ticket is complete" or "commit and push" both complete it. Commit and push also commits the implementation repo with `(RLD-xxx)` on the subject and pushes. |
 | Client home | This repo: `~/Projects/bluesurf-tools` |
 | Skills | User-level `~/.agents/skills/bluesurf-ticket` and `bluesurf-sprint` (linked from `~/.claude/skills` and `~/.cursor/skills`) |
@@ -27,7 +27,7 @@ Local client and agent skills for **your** Blue Surf session. No public API. No 
 1. Fetch ticket body, comments, metadata, attachment list.
 2. Write `RLand/Tickets/RLD-100/detail.md` in the BluePeople vault.
 3. Download attachments into `RLand/Tickets/RLD-100/attachments/`.
-4. Stop. Ask grill vs implement via the harness.
+4. Stop. If the note is tagged Bugs Detected, the `## Comments` section is the regression work: follow diagnosing-bugs, then implement. Otherwise ask grill vs implement via the harness.
 5. When you say the ticket is complete, or say to commit and push, delete `RLand/Tickets/RLD-100/` entirely. Commit and push also commits the implementation repo with `(RLD-100)` on the subject and pushes.
 
 ### `/bluesurf-sprint`
@@ -42,13 +42,11 @@ Origin in production is **`https://surf.bluepeople.com`**, not `bluesurf.bluepeo
 
 Auth is a cookie session after `POST /api/login` (the SPA does this; **we do not replay email/password**). Early calls return 401 until that session exists. The client must reuse the Playwright profile’s cookies via `page.request` / `context.request`.
 
-`.scratch/network.json` contains secrets (including a Google refresh token) and personal profile fields. Do not commit or share it.
-
 ### Endpoints we will call
 
 | Function | Call | Notes |
 | --- | --- | --- |
-| `getCurrentUser()` | `GET /api/instance/currentUser` | `id` is the assignee filter (`08de2091-…` in this session). |
+| `getCurrentUser()` | `GET /api/instance/currentUser` | `id` is the assignee filter (your user id from this response). |
 | `getWorkItem(code)` | `GET /api/workItem/{code}` | Confirmed with `RLD-336` and `RLD-339`. Includes `files[]`. |
 | `getWorkItemVideos(code)` | `GET /api/WorkItem/{code}/videos` | Empty array on RLD-336 and RLD-339. |
 | `getWorkItemFileName(workItemId, fileId)` | `GET /api/workItem/{workItemId}/fileName/{fileId}` | Plain text filename. Confirmed on RLD-339. |

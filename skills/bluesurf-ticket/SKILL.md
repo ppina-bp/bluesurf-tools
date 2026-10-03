@@ -1,6 +1,6 @@
 ---
 name: bluesurf-ticket
-description: Pulls one Blue Surf (Surf) work item such as RLD-388 into the Obsidian vault (detail note plus attachments), then stops and asks grill vs implement. Use when the user wants a specific ticket brought down or worked on, in any wording: "surf RLD-388", "pull RLD-388", "grab ticket 388 from Surf", "let's work on RLD-388", or /bluesurf-ticket. The complete branch ("the ticket is complete", "commit and push") applies only to a ticket pulled with this skill earlier in the same conversation; otherwise "commit and push" is ordinary git work, not this skill.
+description: Pulls one Blue Surf (Surf) work item such as RLD-388 into the Obsidian vault (detail note plus attachments), then stops and asks grill vs implement. Use when the user wants a specific ticket brought down or worked on, in any wording: "surf RLD-388", "pull RLD-388", "grab ticket 388 from Surf", "let's work on RLD-388", or /bluesurf-ticket. When the pulled note is tagged Bugs Detected, the comments are regressions to fix: follow diagnosing-bugs and implement, and do not recommend grill. The complete branch ("the ticket is complete", "commit and push") applies only to a ticket pulled with this skill earlier in the same conversation; otherwise "commit and push" is ordinary git work, not this skill.
 ---
 
 Repo: `~/Projects/bluesurf-tools`. Session is `.surf-cookies.json` there, loaded into headless Chromium.
@@ -13,7 +13,10 @@ Repo: `~/Projects/bluesurf-tools`. Session is `.surf-cookies.json` there, loaded
 2. From the repo: `npm run ticket -- RLD-336`.
 3. Done when `RLand/Tickets/RLD-336/detail.md` exists.
 
-Then **stop**. Ask grill vs implement with the harness question tool (`AskQuestion` in Cursor, `AskUserQuestion` in Claude Code; recommended: grill). Do not start coding.
+Then **stop**. Read the note's tags.
+
+- If the tags include `Bugs Detected`, the `## Comments` section is the regression work. Follow `diagnosing-bugs`, then `implement` with `tdd`, for those comments. Do not ask grill vs implement.
+- Otherwise ask grill vs implement with the harness question tool (`AskQuestion` in Cursor, `AskUserQuestion` in Claude Code; recommended: grill). Do not start coding.
 
 ## Complete
 

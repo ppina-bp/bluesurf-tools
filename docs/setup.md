@@ -28,6 +28,14 @@ npm run login
 
 Complete SSO in the Chromium window. It saves the session to `.surf-cookies.json` (gitignored, mode 600) and closes by itself once you are signed in; later commands run headless. Never `POST /api/login` from this repo.
 
+### Sharing with teammates
+
+- Hand off the **git repo** (clone), not a zip or copy of someone’s working tree. Local-only files — `.surf-cookies.json`, `.chrome-profile/`, `.env`, and `.scratch/` — are gitignored and must stay on each person’s machine.
+- Everyone uses their **own** SSO via `npm run login`. Sessions are not shared.
+- Use the **skills** (`bluesurf-move`, `bluesurf-ticket`, …) in agent chats. They enforce preview/confirm for board moves; running `npm run move … --yes` directly skips that step.
+- Tickets tagged **Bugs Detected** tell the agent to implement from Surf **comments** without a grill step. Description and comments are written into Obsidian as-is (HTML included).
+- Pulling a ticket downloads **attachments** into your vault. Only pull work items you would open in Surf anyway.
+
 ## 2. Install Matt Pocock’s skills
 
 The skill router reads `~/.agents/skills/<name>/SKILL.md`. Install the pack **into your home directory**, not into this repo:
@@ -97,7 +105,7 @@ That overwrites `~/.codex/AGENTS.md`. If you already have other sections there, 
 ## Claude Code and Linux notes
 
 - **Claude Code** reads `~/.claude/skills/`, which step 3 already links. The Blue Surf skills work without the Cursor rules or the Matt Pocock pack; skip steps 2, 4, and 5 if you only want the Surf commands. Start a new session after linking so the skills load.
-- **Vault path:** `.env.example` has a macOS iCloud path. On Linux, point `OBSIDIAN_VAULT` at any folder, e.g. `~/Documents/BluePeople`.
+- **Vault path:** set `OBSIDIAN_VAULT` in `.env` to your Obsidian vault root (see the placeholder in `.env.example`). On Linux, e.g. `~/Documents/BluePeople`; on macOS, often an iCloud Obsidian folder.
 
 ## 6. Check it
 
