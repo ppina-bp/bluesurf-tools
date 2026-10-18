@@ -9,7 +9,7 @@ export {
   flattenKanbanWorkItems,
   formatMyTickets,
   groupMyTickets,
-  isDoneStatus,
+  isDoneItem,
   latestCurrentSprintId,
   listMyCurrentSprintWorkItems,
   listMySprintWorkItems,

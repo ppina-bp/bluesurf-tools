@@ -115,11 +115,11 @@ List the tickets assigned to you across **every** sprint. Read-only; nothing is 
 
 **Say:** `/bluesurf-mine`, “my tickets”, or “what’s assigned to me”.
 
-**Does:** loads your assigned cards, hides any `DONE` status, and groups the rest by sprint (newest first, no sprint last), ordered by priority. Agents call it with `--json`.
+**Does:** loads your assigned cards, hides finished ones (Surf's final status, `Validation (DONE)`; stage columns like `Testing (DONE)` stay listed), and groups the rest by sprint (newest first, no sprint last), ordered by priority. Agents call it with `--json`.
 
 ```bash
 npm run mine            # open tickets
-npm run mine -- --all   # include DONE
+npm run mine -- --all   # include Validation (DONE)
 npm run mine -- --json  # machine-readable, for agents
 ```
 

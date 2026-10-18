@@ -30,13 +30,16 @@ describe("createClient", () => {
     assert.equal(item.name, "Add legal-location fields");
   });
 
-  it("lists my current-sprint items via assignedTo kanban", async () => {
+  it("lists my current-sprint items via assignedTo kanban with every column uncapped", async () => {
     const calls = [];
     const client = createClient({
       request: async (method, path, body) => {
         calls.push({ method, path, body });
         if (path === "/api/instance/currentUser") {
           return { id: "user-1", fullName: "Pato" };
+        }
+        if (path === "/api/project/RLD/kanban?skipWorkItems=true") {
+          return [{ type: 0, statuses: [{ id: "s-doing", name: "Doing" }, { id: "s-done", name: "Done" }] }];
         }
         if (path === "/api/project/RLD/kanban?skipWorkItems=false") {
           return [
@@ -90,8 +93,13 @@ describe("createClient", () => {
 
     const rows = await client.listMyCurrentSprintRows("RLD");
     assert.deepEqual(calls[0], { method: "GET", path: "/api/instance/currentUser", body: undefined });
-    assert.equal(calls[1].path, "/api/project/RLD/kanban?skipWorkItems=false");
-    assert.deepEqual(calls[1].body.assignedTo, ["user-1"]);
+    assert.equal(calls[1].path, "/api/project/RLD/kanban?skipWorkItems=true");
+    assert.equal(calls[2].path, "/api/project/RLD/kanban?skipWorkItems=false");
+    assert.deepEqual(calls[2].body.assignedTo, ["user-1"]);
+    assert.deepEqual(calls[2].body.quantityPerStatus, [
+      { statusId: "s-doing", quantity: 1000 },
+      { statusId: "s-done", quantity: 1000 },
+    ]);
     assert.deepEqual(
       rows.map((row) => row.code),
       ["RLD-336", "RLD-337"],
