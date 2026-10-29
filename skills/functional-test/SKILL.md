@@ -1,6 +1,6 @@
 ---
 name: functional-test
-description: Run functional acceptance checks after implementation — Playwright subagent for UI, smoke matrix for CLI/API — and write results under the Surf ticket validation folder. Use when bluesurf-ticket requires post-implement verification, when the user asks for functional or acceptance testing on a Surf ticket, or after implement and code-review on pulled ticket work.
+description: Run functional acceptance checks after implementation — Playwright subagent for UI, smoke matrix for CLI/API — write report and manual-reproduction steps under the Surf ticket validation folder. Use when bluesurf-ticket requires post-implement verification, when the user asks for functional or acceptance testing on a Surf ticket, or after implement and code-review on pulled ticket work.
 ---
 
 Blue Surf acceptance layer after Matt Pocock **implement** (which already ran **tdd**, **code-review**, and **commit**). Hard gate for **bluesurf-ticket** complete.
@@ -13,7 +13,7 @@ Settled before you start:
 
 1. **Spec** — pulled ticket `detail.md` plus the confirmed plan from the chat, including a **Functional checks** section.
 2. **Implement done** — **implement** finished for this ticket (including its commit). **code-review** had no blocking/high findings (nits may remain).
-3. **Dev server** — the human already runs the app. Read the implementation repo **AGENTS.md** (or **CONTEXT.md**) for base URL, health endpoint, and auth. Fail fast if health check fails; tell the human to start dev per AGENTS.md.
+3. **Dev server** — the human already runs the app. Read the implementation repo **AGENTS.md** (from `bluesurf-tools/templates/AGENTS.md.template` if missing, ask the human to add it). Use base URL, health endpoint, and auth from the **Functional testing** section. Fail fast if health check fails; tell the human to start dev per AGENTS.md.
 4. **Ticket key** — e.g. `PRY-XXX` (project code + number) for vault paths.
 
 ## Process
@@ -48,9 +48,9 @@ Spawn a **Task** subagent (generalPurpose or equivalent) with a single job:
 - If the repo has no Playwright dependency, use **`npx playwright`** with an ephemeral script (do not add `@playwright/test` to the repo unless the human asks).
 - Execute every bullet under **Functional checks** from the confirmed plan against the running app.
 - On failure: save trace/screenshot; on pass: screenshot key states.
-- Return a short structured result: pass/fail, commands run, paths to artifacts.
+- Return a short structured result: pass/fail, commands run, paths to artifacts, and enough detail to write **Manual reproduction** (step 5).
 
-Parent agent: wait for the subagent, then write artifacts (step 4).
+Parent agent: wait for the subagent, then write artifacts (steps 4–5).
 
 ### 4. Validation folder (vault)
 
@@ -60,16 +60,32 @@ Under the BluePeople vault (see **bluesurf-ticket** / `OBSIDIAN_VAULT`):
 
 Write:
 
-- `report.md` — what ran, pass/fail, links to screenshots, subagent notes (redact secrets).
+- `report.md` — what ran, pass/fail, links to screenshots, subagent notes (redact secrets). Do **not** put manual steps here; they go in step 5.
 - Screenshots (and trace zip on failure) alongside the report.
 
-Give the human a **brief summary in chat**. Done when `validation/report.md` exists and reflects the latest run.
+### 5. Manual reproduction (last step)
+
+Always finish with human-runnable steps that mirror exactly what the agent did — same order, same URLs, same commands, same expected outcomes. A human with no agent access should be able to repeat the run from this file alone.
+
+Write `manual-reproduction.md` in the same `validation/` folder:
+
+1. **Prerequisites** — how to start dev (command from AGENTS.md, base URL, health check). If login is required: how a human signs in (no secrets; reference env vars or “use your SSO account”).
+2. **Steps** — numbered list. For each **Functional checks** bullet and each smoke/CLI command executed:
+   - UI: URL to open, clicks/inputs in plain language, what to look for (pass/fail).
+   - CLI/HTTP: full copy-paste commands and expected exit code or response snippet.
+3. **Expected result** — one line per step or a short closing “all steps pass when …”.
+
+Use the same step numbering the agent followed; if the agent re-ran a step, document the final successful path.
+
+Give the human a **brief summary in chat** and point to `manual-reproduction.md`.
+
+Done when `validation/report.md` and `validation/manual-reproduction.md` exist and reflect the latest run.
 
 ## Failure loop
 
 On fail:
 
-1. Summarize failures (chat + update `validation/report.md`).
+1. Summarize failures (chat + update `validation/report.md`; leave `manual-reproduction.md` stale or note “failed run” until a passing rerun completes step 5).
 2. Call **implement** with **tdd** to fix, then **code-review** again (must reach no blockers). **implement** commits when it finishes.
 3. Re-run this skill from step 1.
 

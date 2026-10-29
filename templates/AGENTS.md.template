@@ -1,0 +1,99 @@
+# FILL: Project name
+
+FILL: One sentence — what this repo is and who uses it.
+
+This file is **for agents working in this repo**. Global Surf + Matt Pocock routing lives in your harness (`~/.agents/skills`, Cursor rules). Per-repo Matt setup (`setup-matt-pocock-skills`) adds `docs/agents/issue-tracker.md`, glossary, and ADRs — run that once; this template complements it.
+
+<!-- Next.js: If `next dev` injects a block between BEGIN/END nextjs-agent-rules, keep it at the top and put everything below it. -->
+
+## Monorepo (if applicable)
+
+| Field | Value |
+| --- | --- |
+| App / package path | FILL: e.g. `apps/rland-web` or `.` |
+| Dev & tests run from | FILL: same path or repo root |
+
+Single-package repos: set both to `.` and delete this section if you prefer.
+
+## Commands
+
+Fill from `package.json` / README. Agents should prefer these over guessing.
+
+| Action | Command |
+| --- | --- |
+| Install | FILL: e.g. `pnpm install` |
+| Dev server (human starts) | FILL: e.g. `pnpm dev` |
+| Lint | FILL: |
+| Typecheck | FILL: |
+| Unit / integration tests | FILL: e.g. `pnpm test` |
+| Smoke (functional-test) | FILL: e.g. `pnpm test:smoke` or leave `—` |
+
+## Functional testing (agents)
+
+Used by the **functional-test** skill after **implement**. The human keeps the dev server running; agents do **not** start/stop it unless this section says otherwise.
+
+| Field | Value |
+| --- | --- |
+| Base URL (local) | FILL: e.g. `http://localhost:3000` |
+| Health check | FILL: e.g. `curl -sf http://localhost:3000/api/health` |
+| Playwright `storageState` (optional) | FILL: path, e.g. `.scratch/playwright/storageState.json` (gitignore) |
+| Test auth env vars (names only) | FILL: e.g. `E2E_USER`, `E2E_PASSWORD` — never put values here |
+
+If browser login is required and no storageState exists yet, use the **wizard** skill once; document the path above after capture.
+
+For Surf tickets, validation artifacts go in the Obsidian vault (`RLand/Tickets/{code}/validation/`), not in this repo: `report.md`, `manual-reproduction.md` (human copy of the same steps the agent ran), and screenshots.
+
+## Environments & branches
+
+Define **your** pipeline. Agents follow the **Agent git rules** below and this table.
+
+| Environment | Branch | Deploy URL | Agent may push? | Agent may merge? | Notes |
+| --- | --- | --- | --- | --- | --- |
+| FILL | FILL | FILL | FILL: yes/no | FILL: yes/no | FILL |
+| FILL | FILL | FILL | FILL | FILL | FILL |
+
+<!--
+  Example pipeline (copy/adapt — not defaults):
+
+  | Local | feature/* | — | yes (feature only) | no | Open PR when asked |
+  | Dev | dev | https://dev.example.com | no | no | PR target for feature work |
+  | Testing | testing | https://test.example.com | no | no | QA / automated deploy |
+  | UAT | uat | https://uat.example.com | no | no | Business sign-off |
+  | Production | main | https://app.example.com | no | no | Humans only |
+
+  Feature flow: branch from dev → PR into dev → promote dev → testing → UAT → prod per team process.
+-->
+
+## Agent git rules
+
+Defaults (override in the table or here if this repo differs):
+
+- Work on **feature branches**; do not commit directly to protected branches unless the human explicitly asks.
+- **Never push or merge** to testing, UAT, or production branches (or any row marked no above).
+- **Push** only when the human explicitly asks (Surf “commit and push” on a ticket counts for that ticket).
+- **Pull requests:** target branch FILL: e.g. `dev`. Open or update a PR only when asked; branch must exist on remote first unless the human asked to push.
+
+## Surf tickets (Blue Surf)
+
+When working a ticket pulled with **bluesurf-ticket**:
+
+- Commit subject ends with the ticket key in parentheses: FILL: e.g. `(PRY-123)`.
+- Run **functional-test** after **implement** before ticket complete.
+- Do not run **ticket-done** or delete the vault folder until functional-test passed.
+
+## Secrets & credentials
+
+- Never commit secrets, `.env` values, or Playwright storage files with live sessions.
+- Reference **environment variable names** only in this file; values live in `.env` (gitignored) or the host CI secret store.
+- Redact tokens and passwords in logs, reports, and chat.
+
+## Domain & standards pointers
+
+| Topic | Location |
+| --- | --- |
+| Glossary | FILL: `GLOSSARY.md` or `—` |
+| Architecture / context | FILL: `CONTEXT.md` or `—` |
+| Coding standards | FILL: `CODING_STANDARDS.md`, `CONTRIBUTING.md`, or `—` |
+| Issue tracker (Matt setup) | FILL: `docs/agents/issue-tracker.md` after setup |
+
+Read only what the task touches; do not load the whole repo spec every turn.

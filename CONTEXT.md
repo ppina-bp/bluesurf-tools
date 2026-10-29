@@ -10,6 +10,9 @@ _Avoid_: agent, IDE, tool
 
 **Blue Surf skills**:
 The skills that talk to Surf and Obsidian: ticket, sprint, sprint-review, move, and mine.
+
+**Implementation AGENTS template**:
+`templates/AGENTS.md.template` — copy into each app repo as `AGENTS.md` for functional testing, branch/environment tables, and local commands.
 _Avoid_: Surf commands, the CLI
 
 **Matt Pocock skills**:

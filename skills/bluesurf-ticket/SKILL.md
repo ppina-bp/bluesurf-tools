@@ -26,7 +26,7 @@ When implementing a pulled ticket in the **implementation repo** (keep dev runni
 
 1. **Plan** — confirmed plan (from grill or regression scope) must include a **Functional checks** section (concrete pass/fail bullets for **functional-test**).
 2. **implement** — run the **implement** skill to completion (it drives **tdd**, **code-review**, and **commit**). For this Surf ticket, the commit subject ends with `({code})`, e.g. `(PRY-123)`.
-3. **functional-test** — hard gate; artifacts in `RLand/Tickets/{code}/validation/` (`report.md` + screenshots). On fail, follow **functional-test** failure loop (max 3 cycles), then repeat from step 2 as needed.
+3. **functional-test** — hard gate; artifacts in `RLand/Tickets/{code}/validation/` (`report.md`, `manual-reproduction.md`, screenshots). On fail, follow **functional-test** failure loop (max 3 cycles), then repeat from step 2 as needed.
 4. **Complete** — only after step 3 passes: human says ticket complete or commit and push (see below).
 
 Do not run **bluesurf-ticket** complete or delete the vault folder until **functional-test** has passed.

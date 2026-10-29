@@ -6,6 +6,8 @@ This workflow is **opinionated to me (Pato Piña / patopiña)**. After a ticket 
 
 Cursor, Codex, and Claude Code load the rules in [`rules/`](rules/) and the skills in [`skills/`](skills/). `npm run setup` links those skills into the harnesses you pick, including `~/.agents/skills`. Use them in a **new chat**. If the session is dead, run `npm run login` here first.
 
+**Implementation repos:** copy [`templates/AGENTS.md.template`](templates/AGENTS.md.template) to `AGENTS.md` in the project, fill placeholders (commands, functional testing, environment/branch table, git rules). Complements `setup-matt-pocock-skills` in that repo; does not replace it.
+
 Design notes: [docs/design.md](docs/design.md). Full install: [docs/setup.md](docs/setup.md).
 
 ## Setup
@@ -38,7 +40,7 @@ Pull one Surf work item into Obsidian, then stop. A ticket tagged Bugs Detected 
 3. Downloads files into `RLand/Tickets/PRY-XXX/attachments/`.
 4. Stops. On `Bugs Detected`, the comments are the regressions to fix. Otherwise asks **grill vs implement**.
 
-**Work ticket** (implementation repo; keep dev running and document URL/auth in **AGENTS.md**): grill (plan includes **Functional checks**) → Matt **implement** (TDD, code-review, commit with `(PRY-XXX)`) → **functional-test** (Playwright subagent or smoke matrix; report under `RLand/Tickets/PRY-XXX/validation/`). Sequencing is in **bluesurf-ticket**; Matt Pocock skills stay unchanged.
+**Work ticket** (implementation repo; keep dev running and document URL/auth in **AGENTS.md**): grill (plan includes **Functional checks**) → Matt **implement** (TDD, code-review, commit with `(PRY-XXX)`) → **functional-test** (Playwright subagent or smoke matrix; `report.md` + `manual-reproduction.md` under `RLand/Tickets/PRY-XXX/validation/`). Sequencing is in **bluesurf-ticket**; Matt Pocock skills stay unchanged.
 
 **Complete the ticket** only after functional-test passes:
 
