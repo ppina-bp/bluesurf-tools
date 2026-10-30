@@ -30,7 +30,7 @@ Fill from `package.json` / README. Agents should prefer these over guessing.
 
 ## Functional testing (agents)
 
-Used by the **functional-test** skill after **implement**. The human keeps the dev server running; agents do **not** start/stop it unless this section says otherwise.
+Used by the **functional-test** skill after **implement**. The human keeps the dev server running; agents do **not** start/stop it unless this section says otherwise. UI runner depends on harness: Cursor integrated browser, Claude in Chrome (`--chrome`), Codex browser MCP if configured, else **Playwright** subagent. Screenshots land in the ticket `validation/` folder in Obsidian.
 
 | Field | Value |
 | --- | --- |
