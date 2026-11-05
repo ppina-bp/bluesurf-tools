@@ -24,6 +24,10 @@ const emptyKanbanFilter = {
   quantityPerStatus: [],
 };
 
+// Surf returns at most 10 cards per column unless quantityPerStatus names the
+// column, so busy columns (Testing (DONE), Validation (DONE)) come back short.
+const fullColumn = 1000;
+
 function sessionError(status, path) {
   if (status === 401) {
     return new Error(`Blue Surf session expired on ${path}. Run npm run login and retry.`);
@@ -96,23 +100,26 @@ export function createClient({ request, origin = "https://surf.bluepeople.com" }
       }
       return updated;
     },
-    async listMyWorkItems(projectCode) {
+    async getMyKanban(projectCode) {
       const user = await this.getCurrentUser();
-      const kanban = await this.getKanban(projectCode, { assignedTo: [user.id] });
-      return flattenKanbanWorkItems(kanban);
+      const boards = await this.getBoards(projectCode);
+      const quantityPerStatus = (boards ?? []).flatMap((board) =>
+        (board.statuses ?? []).map((status) => ({ statusId: status.id, quantity: fullColumn })),
+      );
+      return this.getKanban(projectCode, { assignedTo: [user.id], quantityPerStatus });
+    },
+    async listMyWorkItems(projectCode) {
+      return flattenKanbanWorkItems(await this.getMyKanban(projectCode));
     },
     async listMyCurrentSprintWorkItems(projectCode) {
-      const user = await this.getCurrentUser();
-      const kanban = await this.getKanban(projectCode, { assignedTo: [user.id] });
-      return listMyCurrentSprintWorkItems(kanban);
+      return listMyCurrentSprintWorkItems(await this.getMyKanban(projectCode));
     },
     async listMyCurrentSprintRows(projectCode) {
       const items = sortByPriority(await this.listMyCurrentSprintWorkItems(projectCode));
       return this.toSprintRows(items);
     },
     async listMySprintRows(projectCode, targetSprintNumber) {
-      const user = await this.getCurrentUser();
-      const kanban = await this.getKanban(projectCode, { assignedTo: [user.id] });
+      const kanban = await this.getMyKanban(projectCode);
       const items = sortByPriority(listMySprintWorkItems(kanban, targetSprintNumber));
       return this.toSprintRows(items);
     },
