@@ -14,6 +14,7 @@
     "sprint-review": "node scripts/sprint-review.mjs",
     "move": "node scripts/move.mjs",
     "mine": "node scripts/mine.mjs",
+    "daily-report": "node scripts/daily-report.mjs",
     "test": "node --test test/*.test.js",
     "postinstall": "playwright install chromium"
   },

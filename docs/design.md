@@ -37,6 +37,22 @@ Local client and agent skills for **your** Blue Surf session. No public API. No 
 2. Sort by priority.
 3. Write `Proyect/Sprints/Sprint N.md` with title, estimated hours, type, tags, and ticket links.
 
+### `/bluesurf-daily-report`
+
+`npm run daily-report -- fetch|plan|apply YYYY-MM-DD` (optional `--ticket CODE:hours`, `--json`). Agent skill calls the CLI only.
+
+| Step | Call | Notes |
+| --- | --- | --- |
+| `fetch` | `GET /api/effort/myDailyReport/{date}` | Draft `status` 0 or confirmed 2 |
+| | `GET /api/google/calendar/{date}` | `{ summary, duration }[]` |
+| | `GET /api/WorkItems/efforts/{date}` | Ticket hints (often empty) |
+| | `GET /api/user/current/subcategory` | Category picker rows |
+| | `GET /api/project?includeCategories=true` | Projects + allowed categories |
+| `plan` | (local) | Calendar rows if none yet; `--ticket` overrides; trim to 8h |
+| `apply` | `POST /api/Effort/DailyReport` | Full report body, **`status: 0` only** — never 2 |
+
+Captured 2026-11-05: Save POST mirrors `myDailyReport` shape; strip UI-only fields (e.g. embedded `subcategories` on new lines).
+
 ## Spike result (2026-09-10)
 
 Origin in production is **`https://surf.bluepeople.com`**, not `bluesurf.bluepeople.com`.

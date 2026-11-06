@@ -1,4 +1,11 @@
 export { createClient } from "./client.js";
+export {
+  TARGET_HOURS,
+  applyDailyReport,
+  fetchDailyReportBundle,
+  planDailyReport,
+  toSavePayload,
+} from "./daily-report.js";
 export { exportSprint } from "./export-sprint.js";
 export { exportSprintReview, defaultReviewSprintNumber } from "./export-sprint-review.js";
 export { exportTicket } from "./export-ticket.js";
