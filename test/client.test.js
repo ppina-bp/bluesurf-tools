@@ -146,6 +146,41 @@ describe("createClient", () => {
     ]);
   });
 
+  it("loads daily report data and saves draft only", async () => {
+    const calls = [];
+    const client = createClient({
+      request: async (method, path, body) => {
+        calls.push({ method, path, body });
+        if (path === "/api/effort/myDailyReport/2026-11-05") {
+          return { date: "2026-11-05T00:00:00", status: 0, efforts: [] };
+        }
+        if (path === "/api/google/calendar/2026-11-05") {
+          return [{ summary: "RLD - Daily", duration: 0.25 }];
+        }
+        if (path === "/api/WorkItems/efforts/2026-11-05") {
+          return { workItems: [], statuses: [] };
+        }
+        if (path === "/api/user/current/subcategory") return [];
+        if (path === "/api/project?includeCategories=true") return [];
+        if (path === "/api/Effort/DailyReport") return null;
+        throw new Error(`unexpected ${method} ${path}`);
+      },
+    });
+    const report = await client.getMyDailyReport("2026-11-05");
+    assert.equal(report.status, 0);
+    await client.saveDailyReport({
+      date: report.date,
+      status: 0,
+      efforts: [],
+    });
+    assert.equal(calls.at(-1).path, "/api/Effort/DailyReport");
+    assert.equal(calls.at(-1).body.status, 0);
+    await assert.rejects(
+      async () => client.saveDailyReport({ date: report.date, status: 2, efforts: [] }),
+      /only allows draft/,
+    );
+  });
+
   it("tells the user to log in again on 401", async () => {
     const client = createClient({
       request: mockRequest({

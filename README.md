@@ -130,19 +130,17 @@ npm run mine -- --json  # machine-readable, for agents
 
 ## `/bluesurf-daily-report`
 
-Fill your Surf daily report for a day (save only — you still confirm in the UI).
+Fill your Surf daily report for a day (**Save** only — you still confirm in the UI).
 
-**Say:** `/bluesurf-daily-report`, “capture hours”, “daily report”, “report time for yesterday”, or “ayer”.
+**Say:** `/bluesurf-daily-report`, “capture hours”, “daily report”, or “report time for yesterday”.
 
-**Does:**
+**Does:** `fetch` loads the day, calendar, categories, and projects; `plan` builds an 8h draft (calendar + `--ticket` lines); `apply` POSTs **`status: 0`** only.
 
-1. Reuses the saved session in headless Chromium.
-2. Reads the day (`GET /api/effort/myDailyReport/YYYY-MM-DD`), Google Calendar events, and work items with effort for that date.
-3. Keeps calendar activities already on the day; adds one activity per ticket worked (project, work item, category — development uses Desarrollo / Construcción / Codificación).
-4. Targets **8 hours** total (meetings plus ticket time). Never invents tickets or meetings.
-5. **`POST /api/Effort/DailyReport` with `status: 0` (Save)** — never Save & Confirm (`status: 2`).
-
-No CLI yet; the agent calls the Surf JSON APIs with your session cookies per the skill.
+```bash
+npm run daily-report -- fetch 2026-11-05 --json
+npm run daily-report -- plan 2026-11-05 --ticket RLD-100:2 --json
+npm run daily-report -- apply 2026-11-05 --ticket RLD-100:2
+```
 
 ## Commands
 
@@ -156,6 +154,7 @@ No CLI yet; the agent calls the Surf JSON APIs with your session cookies per the
 | `npm run sprint-review` | Write or rewrite a past-sprint review note (default: previous sprint) |
 | `npm run move -- RLD-388 "dev done"` | Preview a status move; add `--yes` to move |
 | `npm run mine` | List your open tickets across all sprints (`--all`, `--json`) |
+| `npm run daily-report -- fetch\|plan\|apply DATE` | Daily report draft save (`--ticket CODE:hours`, `--json`) |
 | `npm test` | Unit tests |
 | `npm run spike` | Record Surf XHR (only if the API map in `docs/design.md` is stale) |
 

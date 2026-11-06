@@ -147,5 +147,26 @@ export function createClient({ request, origin = "https://surf.bluepeople.com" }
       const files = await this.resolveWorkItemFiles(item.files ?? []);
       return toTicketNote({ ...item, files });
     },
+    getMyDailyReport(date) {
+      return api("GET", `/api/effort/myDailyReport/${date}`);
+    },
+    getGoogleCalendar(date) {
+      return api("GET", `/api/google/calendar/${date}`);
+    },
+    getWorkItemsEfforts(date) {
+      return api("GET", `/api/WorkItems/efforts/${date}`);
+    },
+    listCurrentSubcategories() {
+      return api("GET", "/api/user/current/subcategory");
+    },
+    listProjectsWithCategories() {
+      return api("GET", "/api/project?includeCategories=true");
+    },
+    saveDailyReport(body) {
+      if (body?.status !== 0) {
+        throw new Error("saveDailyReport only allows draft status 0");
+      }
+      return api("POST", "/api/Effort/DailyReport", body);
+    },
   };
 }

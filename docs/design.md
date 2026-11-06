@@ -39,14 +39,19 @@ Local client and agent skills for **your** Blue Surf session. No public API. No 
 
 ### `/bluesurf-daily-report`
 
-Agent skill only (no `npm run` yet). For `https://surf.bluepeople.com/dailyReport/YYYY-MM-DD`:
+`npm run daily-report -- fetch|plan|apply YYYY-MM-DD` (optional `--ticket CODE:hours`, `--json`). Agent skill calls the CLI only.
 
-- `GET /api/effort/myDailyReport/{date}` — existing activities and report status
-- `GET /api/google/calendar/{date}` — calendar events (empty days auto-add these in the UI)
-- `GET /api/WorkItems/efforts/{date}` — work items with effort context
-- `POST /api/Effort/DailyReport` — save with `status: 0` only; **never** `status: 2` (Save & Confirm)
+| Step | Call | Notes |
+| --- | --- | --- |
+| `fetch` | `GET /api/effort/myDailyReport/{date}` | Draft `status` 0 or confirmed 2 |
+| | `GET /api/google/calendar/{date}` | `{ summary, duration }[]` |
+| | `GET /api/WorkItems/efforts/{date}` | Ticket hints (often empty) |
+| | `GET /api/user/current/subcategory` | Category picker rows |
+| | `GET /api/project?includeCategories=true` | Projects + allowed categories |
+| `plan` | (local) | Calendar rows if none yet; `--ticket` overrides; trim to 8h |
+| `apply` | `POST /api/Effort/DailyReport` | Full report body, **`status: 0` only** — never 2 |
 
-Target 8 hours across meetings plus ticket activities; optional prompt at end of a work session to capture time.
+Captured 2026-11-05: Save POST mirrors `myDailyReport` shape; strip UI-only fields (e.g. embedded `subcategories` on new lines).
 
 ## Spike result (2026-09-10)
 

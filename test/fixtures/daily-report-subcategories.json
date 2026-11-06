@@ -1,0 +1,14 @@
+[
+  {
+    "id": "sub-google",
+    "name": "Google Calendar",
+    "categoryId": "cat-google",
+    "categoryName": "Google"
+  },
+  {
+    "id": "sub-dev-code",
+    "name": "Construcción / Codificación",
+    "categoryId": "cat-dev",
+    "categoryName": "Desarrollo"
+  }
+]
