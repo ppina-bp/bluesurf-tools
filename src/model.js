@@ -253,8 +253,10 @@ export function findBoardStatus(boards, type, query) {
   );
 }
 
-export function isDoneStatus(status) {
-  return String(status ?? "").toLowerCase().includes("done");
+// Surf flags only the final column (Validation (DONE)) with statusIsFinal.
+// Stage columns like "Testing (DONE)" are still open work, so the name is no guide.
+export function isDoneItem(item) {
+  return item?.statusIsFinal === true;
 }
 
 export function toMyTicketRow(item) {
@@ -271,11 +273,11 @@ export function toMyTicketRow(item) {
 }
 
 // Groups my work items by sprint: newest sprint first (by the number in its
-// name), no sprint last, priority order inside each. Hides DONE unless `all`.
+// name), no sprint last, priority order inside each. Hides final (done) items unless `all`.
 export function groupMyTickets(items, { all = false } = {}) {
   const groups = new Map();
   for (const item of items) {
-    if (!all && isDoneStatus(item.statusName)) continue;
+    if (!all && isDoneItem(item)) continue;
     const key = item.currentSprintName || "";
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(item);

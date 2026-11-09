@@ -23,7 +23,7 @@ try {
   if (json) {
     console.log(JSON.stringify(groups, null, 2));
   } else if (groups.length === 0) {
-    console.log(all ? "No tickets assigned to you." : "No open tickets assigned to you. Use --all to include DONE.");
+    console.log(all ? "No tickets assigned to you." : "No open tickets assigned to you. Use --all to include Validation (DONE).");
   } else {
     console.log(formatMyTickets(groups));
   }
