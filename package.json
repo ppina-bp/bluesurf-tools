@@ -1,24 +1,37 @@
 {
-  "name": "bluesurf-tools",
+  "name": "@bluepeople/bluesurf",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Local Blue Surf client for agent skills. Uses your SSO session only.",
+  "description": "Blue Surf CLI and agent skills. Uses your SSO session only.",
+  "bin": {
+    "bluesurf": "./bin/bluesurf.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    "rules",
+    "templates",
+    "package.json"
+  ],
   "scripts": {
-    "setup": "node scripts/setup.mjs",
+    "setup": "node bin/bluesurf.mjs setup",
     "link-skills": "node scripts/link-skills.mjs",
-    "login": "node scripts/login.mjs",
+    "login": "node bin/bluesurf.mjs login",
     "spike": "node scripts/spike-capture.mjs",
-    "ticket": "node scripts/ticket.mjs",
-    "ticket-done": "node scripts/ticket-done.mjs",
-    "sprint": "node scripts/sprint.mjs",
-    "sprint-review": "node scripts/sprint-review.mjs",
-    "move": "node scripts/move.mjs",
-    "mine": "node scripts/mine.mjs",
-    "daily-report": "node scripts/daily-report.mjs",
+    "ticket": "node bin/bluesurf.mjs ticket",
+    "ticket-done": "node bin/bluesurf.mjs ticket-done",
+    "sprint": "node bin/bluesurf.mjs sprint",
+    "sprint-review": "node bin/bluesurf.mjs sprint-review",
+    "move": "node bin/bluesurf.mjs move",
+    "mine": "node bin/bluesurf.mjs mine",
+    "daily-report": "node bin/bluesurf.mjs daily-report",
     "test": "node --test test/*.test.js",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {
-    "playwright": "^1.55.0"
+    "playwright": "^1.55.0",
+    "smol-toml": "^1.3.1"
   }
 }

@@ -1,4 +1,5 @@
 import { access, lstat, mkdir, readdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { skillsCliPackage } from "./skills-cli.js";
 
@@ -41,7 +42,17 @@ all) All three
 
 Enter numbers separated by spaces (for example: 1 3), or all.`;
 
-export async function setup({ args = [], repoRoot, home, env = {}, stdinIsTTY = false, prompt, run, nodeVersion = process.version }) {
+export async function setup({
+  args = [],
+  repoRoot,
+  skillsRepoRoot,
+  home,
+  env = {},
+  stdinIsTTY = false,
+  prompt,
+  run,
+  nodeVersion = process.version,
+}) {
   const harnesses = args.length === 0
     ? await harnessesFromPrompt({ stdinIsTTY, prompt })
     : harnessesFromArgs(args);
@@ -54,9 +65,10 @@ export async function setup({ args = [], repoRoot, home, env = {}, stdinIsTTY = 
     );
   }
   await runStep(run, "npx", mattPocockArgs(harnesses, skillsCli), repoRoot);
-  const skills = await linkBlueSurfSkills({ repoRoot, home, harnesses });
+  const skillsRoot = skillsRepoRoot ?? repoRoot;
+  const skills = await linkBlueSurfSkills({ repoRoot: skillsRoot, home, harnesses });
   await installRules({ repoRoot, home, harnesses, warnings });
-  const loggedIn = await loginIfNeeded({ repoRoot, run });
+  const loggedIn = await loginIfNeeded({ repoRoot, run, home });
   return { harnesses, warnings, loggedIn };
 }
 
@@ -82,14 +94,16 @@ async function runStep(run, command, args, cwd) {
   }
 }
 
-async function loginIfNeeded({ repoRoot, run }) {
+async function loginIfNeeded({ repoRoot, run, home }) {
+  const { sessionPaths } = await import("./runtime-context.js");
+  const paths = await sessionPaths(home ?? os.homedir());
   try {
-    await access(path.join(repoRoot, ".surf-cookies.json"));
+    await access(paths.cookieJarPath);
     return false;
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  await runStep(run, "npm", ["run", "login"], repoRoot);
+  await runStep(run, "node", ["bin/bluesurf.mjs", "login"], repoRoot);
   return true;
 }
 

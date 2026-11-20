@@ -349,7 +349,7 @@ Never push until asked, including tags.
         args: ["--yes", "skills@latest", "add", "mattpocock/skills", "-g", "-y", "--skill", "*", "-a", "cursor", "-a", "codex", "-a", "claude-code"],
         cwd: repoRoot,
       },
-      { command: "npm", args: ["run", "login"], cwd: repoRoot },
+      { command: "node", args: ["bin/bluesurf.mjs", "login"], cwd: repoRoot },
     ]);
     assert.equal(result.loggedIn, true);
   });
@@ -368,7 +368,9 @@ Never push until asked, including tags.
   });
 
   it("skips login when .surf-cookies.json already exists", async () => {
-    await writeFile(path.join(repoRoot, ".surf-cookies.json"), "{}\n");
+    const sessionDir = path.join(home, ".local", "share", "bluesurf", "session");
+    await mkdir(sessionDir, { recursive: true });
+    await writeFile(path.join(sessionDir, "surf-cookies.json"), "{}\n");
     const calls = [];
     const result = await setup(options(["--claude"], {
       run: async (command, args) => {

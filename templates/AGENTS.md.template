@@ -57,7 +57,7 @@ Used by the **functional-test** skill after **implement**. The human keeps the d
 
 If browser login is required and no storageState exists yet, use the **wizard** skill once; document the path above after capture.
 
-For Surf tickets, validation artifacts go in the Obsidian vault (`Proyect/Tickets/{code}/validation/`), not in this repo: `report.md`, `manual-reproduction.md` (human copy of the same steps the agent ran), and screenshots.
+For Surf tickets, validation artifacts go in the project workstore (`Tickets/{code}/validation/` — see `.surf/project.toml`), not in this repo unless workstore is in-repo: `report.md`, `manual-reproduction.md`, and screenshots.
 
 ## Environments & branches
 
@@ -99,7 +99,7 @@ When working a ticket pulled with **bluesurf-ticket**:
 
 ## Ticket done
 
-This section is the only definition of when an agent may run `npm run ticket-done` (delete the Obsidian ticket folder for this work item). **bluesurf-ticket** reads it after functional-test passes, when the human asks to mark the ticket done, and after a commit-and-push on that ticket.
+This section is the only definition of when an agent may run `bluesurf ticket-done`. **bluesurf-ticket** reads it after functional-test passes, when the human asks to mark the ticket done, and after a commit-and-push on that ticket. Whether the workstore folder is deleted is controlled by config (`ticket.done.delete_folder`), not this table.
 
 Functional-test must already have passed. That gate lives in **bluesurf-ticket**; leave it out of the table.
 
