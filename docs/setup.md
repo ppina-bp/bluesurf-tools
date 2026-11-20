@@ -119,6 +119,11 @@ cd ~/Projects/bluesurf-tools && npm test
 bluesurf doctor
 
 test -f ~/.agents/skills/bluesurf-ticket/SKILL.md && echo "ticket skill ok"
+test -f ~/.agents/skills/functional-test/SKILL.md && echo "functional-test skill ok"
+test -f ~/.agents/skills/bluesurf-sprint/SKILL.md && echo "sprint skill ok"
+test -f ~/.agents/skills/bluesurf-sprint-review/SKILL.md && echo "sprint-review skill ok"
+test -f ~/.agents/skills/bluesurf-mine/SKILL.md && echo "mine skill ok"
+test -f ~/.agents/skills/bluesurf-daily-report/SKILL.md && echo "daily-report skill ok"
 test -f ~/.config/bluesurf/config.toml && echo "config ok"
 ```
 

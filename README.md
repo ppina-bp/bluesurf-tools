@@ -93,7 +93,9 @@ bluesurf mine --json
 
 ## `/bluesurf-daily-report`
 
-`fetch` · `plan` · `apply` (draft **Save** only). Hours cap from config (`daily_report.hours_cap`, default 8).
+**Say:** `/bluesurf-daily-report`, “capture hours”, “daily report”, or “report time for yesterday”.
+
+`fetch` · `plan` · `apply` (draft **Save** only — you confirm in Surf). Hours cap from config (`daily_report.hours_cap`, default 8).
 
 ```bash
 bluesurf daily-report fetch 2026-11-05 --json
