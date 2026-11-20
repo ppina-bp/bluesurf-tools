@@ -172,19 +172,19 @@ function upsertTicketEffort(efforts, line) {
   }
 }
 
-function scaleTicketHours(efforts, meetingHours, warnings) {
+function scaleTicketHours(efforts, meetingHours, warnings, targetHours = TARGET_HOURS) {
   const ticketLines = efforts.filter((e) => e.workItemId && !e.deleted);
   const ticketTotal = sumExecutedHours(ticketLines);
-  const budget = TARGET_HOURS - meetingHours;
+  const budget = targetHours - meetingHours;
   if (budget < 0) {
-    warnings.push(`Meetings already exceed ${TARGET_HOURS}h (${meetingHours}h); ticket hours set to 0.`);
+    warnings.push(`Meetings already exceed ${targetHours}h (${meetingHours}h); ticket hours set to 0.`);
     for (const line of ticketLines) line.executed = 0;
     return;
   }
   if (ticketTotal <= budget || ticketTotal === 0) return;
   const factor = budget / ticketTotal;
   warnings.push(
-    `Ticket hours trimmed from ${ticketTotal}h to ${budget}h to reach ${TARGET_HOURS}h after meetings.`,
+    `Ticket hours trimmed from ${ticketTotal}h to ${budget}h to reach ${targetHours}h after meetings.`,
   );
   for (const line of ticketLines) {
     line.executed = Math.round(line.executed * factor * 100) / 100;
@@ -200,6 +200,7 @@ export async function planDailyReport({
   overrides = [],
   workItemsEfforts = { workItems: [] },
   resolveWorkItem,
+  targetHours = TARGET_HOURS,
 }) {
   assertDateString(date);
   const warnings = [];
@@ -245,13 +246,13 @@ export async function planDailyReport({
     );
   }
 
-  scaleTicketHours(efforts, meetingHours, warnings);
+  scaleTicketHours(efforts, meetingHours, warnings, targetHours);
 
   const executedHours = sumExecutedHours(efforts);
-  if (executedHours < TARGET_HOURS && ticketRequests.length === 0) {
+  if (executedHours < targetHours && ticketRequests.length === 0) {
     warnings.push(`Only ${executedHours}h planned; pass --ticket CODE:hours for ticket work.`);
-  } else if (executedHours < TARGET_HOURS) {
-    warnings.push(`Day totals ${executedHours}h, under ${TARGET_HOURS}h target.`);
+  } else if (executedHours < targetHours) {
+    warnings.push(`Day totals ${executedHours}h, under ${targetHours}h target.`);
   }
 
   const planned = {
@@ -271,7 +272,7 @@ export async function planDailyReport({
       totalHours: executedHours,
       meetingHours,
       ticketHours: sumExecutedHours(efforts.filter((e) => e.workItemId)),
-      targetHours: TARGET_HOURS,
+      targetHours,
     },
   };
 }

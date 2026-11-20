@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "./client.js";
+import { sessionPaths } from "./runtime-context.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -10,17 +11,15 @@ export function profileDir() {
   return path.join(root, ".chrome-profile");
 }
 
-// Surf's session cookie is a browser-session cookie, so Chromium drops it when
-// the context closes and the profile alone never stays signed in. Keep our own
-// copy of the cookies and load it on every launch.
 export function cookieJarPath() {
   return path.join(root, ".surf-cookies.json");
 }
 
-export async function loadCookieJar(context, file = cookieJarPath()) {
+export async function loadCookieJar(context, file) {
+  const jar = file ?? (await sessionPaths()).cookieJarPath;
   let cookies;
   try {
-    cookies = JSON.parse(await readFile(file, "utf8"));
+    cookies = JSON.parse(await readFile(jar, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") return false;
     throw error;
@@ -29,8 +28,10 @@ export async function loadCookieJar(context, file = cookieJarPath()) {
   return true;
 }
 
-export async function saveCookieJar(context, file = cookieJarPath()) {
-  await writeFile(file, JSON.stringify(await context.cookies()), { mode: 0o600 });
+export async function saveCookieJar(context, file) {
+  const jar = file ?? (await sessionPaths()).cookieJarPath;
+  await mkdir(path.dirname(jar), { recursive: true });
+  await writeFile(jar, JSON.stringify(await context.cookies()), { mode: 0o600 });
 }
 
 // Headless has no one to sign in, so fail fast. Headed waits long enough for
@@ -48,28 +49,33 @@ async function warmSession(context, origin, timeoutMs) {
     if (response.ok()) return;
     await page.waitForTimeout(250);
   }
-  const error = new Error("Blue Surf session expired. Run npm run login and retry.");
+  const error = new Error("Blue Surf session expired. Run bluesurf login and retry.");
   error.status = 401;
   throw error;
 }
 
 export async function createSessionRequest({
   origin = process.env.BLUESURF_ORIGIN ?? "https://surf.bluepeople.com",
-  userDataDir = profileDir(),
+  userDataDir,
+  session,
   headless = true,
   warmTimeoutMs = Number(process.env.BLUESURF_WARM_TIMEOUT_MS) ||
     WARM_TIMEOUT_MS[headless ? "headless" : "headed"],
+  cookieJar,
 } = {}) {
-  await mkdir(userDataDir, { recursive: true });
-  const context = await chromium.launchPersistentContext(userDataDir, {
+  const paths = session ?? (await sessionPaths());
+  const profile = userDataDir ?? paths.profileDir;
+  const jar = cookieJar ?? paths.cookieJarPath;
+  await mkdir(profile, { recursive: true });
+  const context = await chromium.launchPersistentContext(profile, {
     headless,
     viewport: { width: 1400, height: 900 },
   });
 
   try {
-    await loadCookieJar(context);
+    await loadCookieJar(context, jar);
     await warmSession(context, origin, warmTimeoutMs);
-    await saveCookieJar(context);
+    await saveCookieJar(context, jar);
   } catch (error) {
     await context.close();
     throw error;
@@ -145,7 +151,7 @@ export async function createSessionRequest({
     notifyProjectUpdated,
     async close() {
       // Keep any cookie Surf rotated during this run.
-      await saveCookieJar(context).catch(() => {});
+      await saveCookieJar(context, jar).catch(() => {});
       await context.close();
     },
   };

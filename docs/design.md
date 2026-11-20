@@ -6,40 +6,37 @@ Local client and agent skills for **your** Blue Surf session. No public API. No 
 
 | Topic | Choice |
 | --- | --- |
-| Data access | Persistent Chrome profile + replay the SPA’s private JSON APIs. DOM scrape is fallback only. |
-| After `/bluesurf-ticket` | Write Obsidian note + attachments, then **stop**. If the note is tagged Bugs Detected, the comments are the regressions to fix. Otherwise ask grill vs implement. |
-| Ticket implement flow | grill (plan includes **Functional checks**) → Matt **implement** (tdd, code-review, commit with `(PRY-XXX)`) → **functional-test** (hard gate; `Proyect/Tickets/PRY-XXX/validation/`) → complete when that repo’s **AGENTS.md** **Ticket done** gates are all true. Orchestration in **bluesurf-ticket**; do not edit Matt Pocock skills. |
-| After the ticket is done | Delete `Proyect/Tickets/PRY-XXX/` entirely (including `validation/`). **Ticket done** in the implementation repo **AGENTS.md** is the gate list. Functional-test must already have passed. Commit and push is git; it runs ticket-done only when that section lists it. |
-| Client home | This repo: `~/Projects/bluesurf-tools` |
-| Skills | `npm run setup` symlinks the Blue Surf skills into `~/.agents/skills` and into each selected harness (`~/.cursor/skills`, `~/.codex/skills`, `~/.claude/skills`) |
-| Obsidian | Vault `BluePeople` → `Proyect/Tickets/RLD-100/detail.md`, files in `Proyect/Tickets/RLD-100/attachments/`, sprint notes in `Proyect/Sprints/Sprint N.md` |
-| Chrome | Dedicated Playwright profile at `.chrome-profile/` (gitignored). Equivalent to “Blue Surf agent”; not your daily Chrome (Chrome locks a profile while it is open). |
+| Data access | Persistent Chromium profile + replay the SPA’s private JSON APIs. DOM scrape is fallback only. |
+| Distribution | **`bluesurf` CLI** (`@bluepeople/bluesurf`); config in `~/.config/bluesurf/config.toml`; session in `~/.local/share/bluesurf/session/` |
+| Workstore | Resolved path for notes (not Obsidian-only). Default layout `Tickets/`, `Sprints/`. See [cli-spec.md](cli-spec.md). |
+| After `/bluesurf-ticket` | Write workstore note + optional attachments, then **stop**. **Bugs Detected** (configurable tag) → implement from comments; else grill vs implement. |
+| Ticket implement flow | grill → Matt **implement** (tdd, code-review) → **functional-test** (`Tickets/{code}/validation/`) → complete when **AGENTS.md** **Ticket done** gates are true. **bluesurf-ticket** orchestrates. |
+| After the ticket is done | **`bluesurf ticket-done`** when gates pass; delete folder only if `ticket.done.delete_folder` in config (default true). Gates stay in **AGENTS.md** only. |
+| Skills install | **`bluesurf setup`** symlinks skills into harnesses + `~/.agents/skills`; **`bluesurf upgrade`** relinks after package update |
+| Chrome | Playwright persistent context under session dir (legacy: repo `.chrome-profile/`). Not your daily browser profile. |
 
 ## Layers
 
-1. **Session** — Playwright persistent context plus a cookie jar. You complete SSO once in a headed window; `npm run login` saves the cookies to `.surf-cookies.json`, and every later run loads them into a headless context. Surf's auth cookie (`.AspNetCore.Identity.Application`) is a browser-session cookie, so Chromium drops it on exit and the profile alone never stays signed in.
-2. **Client** — call the same JSON URLs the Blue Surf SPA already uses. File names and bytes are authenticated GETs from `workItem.files[]`.
-3. **Skills** — thin wrappers. They never store passwords. If the session is dead, they fail with “run `npm run login`”.
+1. **Session** — Playwright + cookie jar. **`bluesurf login`** (headed) → cookies in `~/.local/share/bluesurf/session/surf-cookies.json`. Headless commands reload the jar (Surf’s auth cookie is session-scoped in Chromium).
+2. **Client** — `src/client.js` calls the same JSON URLs as the SPA (`page.request` / `context.request`).
+3. **Config** — TOML merge: global + `.surf/project.toml` + legacy `.env` in dev clone. **`resolveWorkstore`** feeds `createVault()`.
+4. **Skills** — call **`bluesurf`** on PATH; on 401, **`bluesurf login`** and retry.
 
 ## Skills (target)
 
 ### `/bluesurf-ticket RLD-100`
 
-1. Fetch ticket body, comments, metadata, attachment list.
-2. Write `Proyect/Tickets/RLD-100/detail.md` in the BluePeople vault.
-3. Download attachments into `Proyect/Tickets/RLD-100/attachments/`.
-4. Stop. If the note is tagged Bugs Detected, the `## Comments` section is the regression work: follow diagnosing-bugs, then implement. Otherwise ask grill vs implement via the harness.
-5. When every gate in the implementation repo **AGENTS.md** **Ticket done** section is true (and functional-test has passed), delete `Proyect/Tickets/RLD-100/` entirely. Commit and push commits the implementation repo with `(RLD-100)` on the subject and pushes; it deletes the folder only when **Ticket done** lists that push.
+1. `bluesurf ticket RLD-100` — fetch, write `Tickets/RLD-100/detail.md`, attachments per config.
+2. Stop; route per tags and `ticket.after_pull`.
+3. After functional-test + **Ticket done** gates: `bluesurf ticket-done RLD-100`.
 
 ### `/bluesurf-sprint`
 
-1. Fetch tickets assigned to you on the current sprint.
-2. Sort by priority.
-3. Write `Proyect/Sprints/Sprint N.md` with title, estimated hours, type, tags, and ticket links.
+`bluesurf sprint` — current sprint rows → `Sprints/Sprint N.md` (sort from config).
 
 ### `/bluesurf-daily-report`
 
-`npm run daily-report -- fetch|plan|apply YYYY-MM-DD` (optional `--ticket CODE:hours`, `--json`). Agent skill calls the CLI only.
+`bluesurf daily-report fetch|plan|apply DATE` — agent skill calls CLI only; hours cap from config.
 
 | Step | Call | Notes |
 | --- | --- | --- |
@@ -110,34 +107,18 @@ Each work item: `code`, `name`, `priority` / `priorityName`, `estimatedEffort`, 
 ### Gaps
 
 1. **Sprint list endpoint** — board filter still sends `sprints: []`. SPA source also has `POST /api/projectSprint` (save) and `POST /api/workItems/byProperty/sprint` (assign). No dedicated list GET in the captures. Keep inferring the current sprint from `currentSprintId` on kanban cards.
-2. **Attachments** — mapped from RLD-339 + SPA `downloadFile` / `getFileNames`. `npm run ticket -- PRY-XXX` writes `detail.md` and downloads `GET /api/workItem/{id}/file/{fileId}`.
-3. **Sprint note** — `npm run sprint` writes `Proyect/Sprints/Sprint N.md` from `listMyCurrentSprintRows`, or rewrites the same file on later runs. `npm run sprint-review` does the same for Sprint N−1 (or an explicit sprint number): assigned tickets whose `currentSprintName` matches that sprint. Two tables: **Pending Tickets** (`Development (IN PROGRESS)`, `Analysis (IN PROGRESS)`, `Analysis (DONE)`, any `BLOCKED`) and **Done Tickets** (the rest). Estimate is `estimatedEffort`. Effort is **reported** hours (`totalExecuted` from `GET /api/workItem/{code}`; kanban `totalHours` is estimate×1.25 and is not used). Ordered by priority. Still no sprint-list GET; current sprint is the highest-numbered `currentSprintName` on your assigned cards. The most common `currentSprintId` was tried first and picked a past sprint: old sprints keep their cards, so a big old sprint outvotes a smaller current one.
+2. **Attachments** — `GET /api/workItem/{id}/file/{fileId}`; **`bluesurf ticket`** when `pull.download_attachments` is true.
+3. **Sprint note** — **`bluesurf sprint`** / **`bluesurf sprint-review`**; same pending/done tables; effort from `totalExecuted` on full work item. Current sprint = highest sprint number on assigned cards (see `latestCurrentSprintId` caveat in code).
 
-## Proposed client functions
+## Client modules (implemented)
 
-Do not install skills yet. Implement these in `src/` next:
+`src/session.js`, `src/client.js`, `src/vault.js`, `src/export-*.js`, `src/daily-report.js`, config/workstore in `src/config/*` and `src/runtime-context.js`. Entry: `bin/bluesurf.mjs`.
 
-- `createSession()` — launch persistent Chromium; throw “run `npm run login`” on 401.
-- `getCurrentUser()` — id + display name for filters.
-- `parseTicketKey("PRY-123")` → `{ projectCode: "PRY", code: "PRY-123" }`.
-- `getWorkItem(code)` — full ticket for Obsidian.
-- `getWorkItemVideos(code)` — video list (often empty).
-- `listWorkItemFiles(code)` — `files[]` plus filename lookups.
-- `getWorkItemFileName(workItemId, fileId)` / download via `filePath`.
-- `listMyProjects()` / `resolveProject(code)`.
-- `getKanban(projectCode, filters)` — raw board.
-- `listMyWorkItems(projectCode)` — flatten `statuses[].workItems` with `assignedTo: [me]`.
-- `listMyCurrentSprintWorkItems(projectCode)` — same list, keep items on the latest sprint (highest number in `currentSprintName`; most frequent `currentSprintId` as a fallback, or explicit `sprints` filter once we have an id).
-- `sortByPriority(items)` — `priority` descending (5 → 1).
-- `toSprintRow(item)` — `{ code, title, estimatedHours, type, tags, priority, status, sprint }`.
-- `toTicketNote(item)` — markdown for `Proyect/Tickets/{code}/detail.md`.
-- `createVault().removeTicket(code)` — delete `Proyect/Tickets/{code}/` when the ticket is complete.
-
-Session helper: `apiGet(path)` / `apiPost(path, json)` on `https://surf.bluepeople.com` with the profile cookies. Never call `POST /api/login` from our code.
+Never call `POST /api/login` from our code.
 
 ## Out of scope
 
 - Bypassing SSO or sharing someone else’s session
-- Committing `.chrome-profile`, `.surf-cookies.json`, or cookies
+- Committing session state, cookies, or `~/.config/bluesurf/config.toml` with secrets
 - Auto-implementing from a ticket
 - Pushing this repo anywhere unless you ask

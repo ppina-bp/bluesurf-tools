@@ -1,6 +1,6 @@
 import { latestSprintNumber, resolveSprintReviewNumber, toSprintNote } from "./model.js";
 
-export async function exportSprintReview({ client, vault, projectCode, sprintNumber }) {
+export async function exportSprintReview({ client, vault, projectCode, sprintNumber, sort = "priority" }) {
   const items = await client.listMyWorkItems(projectCode);
   const target = resolveSprintReviewNumber(items, sprintNumber);
   if (target === null || target < 1) {
@@ -13,7 +13,7 @@ export async function exportSprintReview({ client, vault, projectCode, sprintNum
   }
 
   const current = latestSprintNumber(items);
-  const rows = await client.listMySprintRows(projectCode, target);
+  const rows = await client.listMySprintRows(projectCode, target, { sort });
   const sprintLabel = rows[0]?.sprint ?? `Sprint ${target}`;
   const review = current !== null && target !== current;
   if (rows.length === 0) {

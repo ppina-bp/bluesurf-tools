@@ -5,6 +5,7 @@ import {
   listMySprintWorkItems,
   parseTicketKey,
   sortByPriority,
+  sortWorkItems,
   toAttachment,
   toSprintRow,
   toTicketNote,
@@ -26,7 +27,7 @@ const emptyKanbanFilter = {
 
 function sessionError(status, path) {
   if (status === 401) {
-    return new Error(`Blue Surf session expired on ${path}. Run npm run login and retry.`);
+    return new Error(`Blue Surf session expired on ${path}. Run bluesurf login and retry.`);
   }
   return new Error(`Blue Surf ${status} on ${path}`);
 }
@@ -106,14 +107,14 @@ export function createClient({ request, origin = "https://surf.bluepeople.com" }
       const kanban = await this.getKanban(projectCode, { assignedTo: [user.id] });
       return listMyCurrentSprintWorkItems(kanban);
     },
-    async listMyCurrentSprintRows(projectCode) {
-      const items = sortByPriority(await this.listMyCurrentSprintWorkItems(projectCode));
+    async listMyCurrentSprintRows(projectCode, { sort = "priority" } = {}) {
+      const items = sortWorkItems(await this.listMyCurrentSprintWorkItems(projectCode), sort);
       return this.toSprintRows(items);
     },
-    async listMySprintRows(projectCode, targetSprintNumber) {
+    async listMySprintRows(projectCode, targetSprintNumber, { sort = "priority" } = {}) {
       const user = await this.getCurrentUser();
       const kanban = await this.getKanban(projectCode, { assignedTo: [user.id] });
-      const items = sortByPriority(listMySprintWorkItems(kanban, targetSprintNumber));
+      const items = sortWorkItems(listMySprintWorkItems(kanban, targetSprintNumber), sort);
       return this.toSprintRows(items);
     },
     toSprintRows(items) {
@@ -142,10 +143,10 @@ export function createClient({ request, origin = "https://surf.bluepeople.com" }
       const item = await this.getWorkItem(code);
       return this.resolveWorkItemFiles(item.files ?? []);
     },
-    async getTicketNote(code) {
+    async getTicketNote(code, { descriptionFormat = "html", bugsDetectedTag = "Bugs Detected" } = {}) {
       const item = await this.getWorkItem(code);
       const files = await this.resolveWorkItemFiles(item.files ?? []);
-      return toTicketNote({ ...item, files });
+      return toTicketNote({ ...item, files }, { descriptionFormat, bugsDetectedTag });
     },
     getMyDailyReport(date) {
       return api("GET", `/api/effort/myDailyReport/${date}`);

@@ -1,177 +1,133 @@
-# bluesurf-tools
+# @bluepeople/bluesurf
 
-Local Blue Surf client and agent skills (Cursor, Codex, Claude Code). They replay **your** SSO session in a dedicated Chromium profile. There is no public API and no password handling.
+Local Blue Surf client, **`bluesurf` CLI**, and agent skills (Cursor, Codex, Claude Code). Commands replay **your** SSO session in a dedicated Chromium profile. There is no public API and no password handling.
 
-This workflow is **opinionated to me (Pato Piña / patopiña)**. After a ticket is pulled, agents follow [Matt Pocock’s engineering skills](https://github.com/mattpocock/skills) — grill → spec → tickets → implement with TDD → review → functional-test — plus the Blue Surf skills below. That routing is mine; it is not a generic Surf or Blue People process.
+This workflow is **opinionated to me (Pato Piña / patopiña)**. After a ticket is pulled, agents follow [Matt Pocock’s engineering skills](https://github.com/mattpocock/skills) — grill → spec → tickets → implement with TDD → review → functional-test — plus the Blue Surf skills in [`skills/`](skills/). That routing is mine; it is not a generic Surf or Blue People process.
 
-Cursor, Codex, and Claude Code load the rules in [`rules/`](rules/) and the skills in [`skills/`](skills/). `npm run setup` links those skills into the harnesses you pick, including `~/.agents/skills`. Use them in a **new chat**. If the session is dead, run `npm run login` here first.
+Agents call **`bluesurf` on PATH** (skills do not use `npm run` from a clone). Harnesses load rules from [`rules/`](rules/) and skills from `~/.agents/skills` after setup. Use a **new chat** after install. Expired session: **`bluesurf login`**.
 
-**Implementation repos:** copy [`templates/AGENTS.md.template`](templates/AGENTS.md.template) to `AGENTS.md` in the project, fill placeholders (commands, functional testing, environment/branch table, git rules, **Ticket done**). Complements `setup-matt-pocock-skills` in that repo; does not replace it.
+**Implementation repos:** `bluesurf init` (or copy [`templates/AGENTS.md.template`](templates/AGENTS.md.template)) → `AGENTS.md` + `.surf/project.toml`. Complements `setup-matt-pocock-skills` in that repo; does not replace it.
 
-Design notes: [docs/design.md](docs/design.md). Full install: [docs/setup.md](docs/setup.md).
+Docs: [docs/setup.md](docs/setup.md) · **[docs/setup-windows.md](docs/setup-windows.md)** (Windows) · [docs/cli-spec.md](docs/cli-spec.md) · [docs/platform.md](docs/platform.md) · [docs/design.md](docs/design.md)
 
-## Setup
-
-On a new machine, follow **[docs/setup.md](docs/setup.md)** — clone, then `npm run setup`. That installs the Matt Pocock skills, the Blue Surf skill links, and the rules for the harnesses you pick, then opens Surf login when you have no saved session.
-
-If this machine is already set up and you only need the Surf session:
+## Quick start
 
 ```bash
+git clone https://github.com/ppina-bp/bluesurf-tools.git ~/Projects/bluesurf-tools
 cd ~/Projects/bluesurf-tools
-npm run login
+npm install
+npm link                    # installs bluesurf on PATH from this clone
+bluesurf setup --all        # harnesses, workstore, skills, rules, login if needed
+bluesurf doctor
 ```
 
-Complete SSO in the window that opens. It saves the session to `.surf-cookies.json` and closes by itself once you are signed in. After that, every command runs headless — no window.
+On **Windows**, follow **[docs/setup-windows.md](docs/setup-windows.md)** (Developer Mode / symlinks) instead of the bash block below.
 
-When the session expires, the skills run `npm run login` for you: a window opens, you sign in, and the agent retries the command.
+Open a **new chat** in your harness. In each app repo: **`bluesurf init`**.
 
-`.env` points at `https://surf.bluepeople.com` and the BluePeople Obsidian vault (`Proyect/Tickets`, `Proyect/Sprints`).
+## Workstore (where notes live)
+
+Ticket and sprint notes go in a **workstore** — any folder you choose (Obsidian vault, iCloud/Dropbox path, `~/.local/share/bluesurf/workstore/<code>/`, or `.bluesurf/` inside a repo). Defaults: `Tickets/<CODE>/` and `Sprints/`.
+
+| Config | Path |
+| --- | --- |
+| Machine defaults | `~/.config/bluesurf/config.toml` (`bluesurf setup`) |
+| Per repo | `.surf/project.toml` (`bluesurf init`) |
+| Session (cookies + Chromium profile) | `~/.local/share/bluesurf/session/` |
+
+Legacy dev clone: repo `.env` and `.surf-cookies.json` still work until you rely on config only. See [docs/cli-spec.md](docs/cli-spec.md).
 
 ## `/bluesurf-ticket`
 
-Pull one Surf work item into Obsidian, then stop. A ticket tagged Bugs Detected carries regression comments to fix. Any other ticket waits until you choose grill or implement.
+Pull one Surf work item into the workstore, then stop. **Bugs Detected** → implement from comments; otherwise grill vs implement.
 
 **Say:** `/bluesurf-ticket PRY-XXX`, or “pull PRY-XXX”.
 
 **Does:**
 
-1. Reuses the saved session in headless Chromium.
-2. Writes `Proyect/Tickets/PRY-XXX/detail.md` (title, priority, type, status, sprint, estimate, tags, attachment names, HTML description). A `Bugs Detected` tag also writes the comments.
-3. Downloads files into `Proyect/Tickets/PRY-XXX/attachments/`.
-4. Stops. On `Bugs Detected`, the comments are the regressions to fix. Otherwise asks **grill vs implement**.
+1. Reuses the saved session (headless Chromium).
+2. Writes `Tickets/PRY-XXX/detail.md` (metadata, description per config, attachments when enabled).
+3. Downloads files into `Tickets/PRY-XXX/attachments/` when `pull.download_attachments` is true.
+4. Stops; routing per tags and config (`ticket.after_pull`, `ticket.bugs_detected_tag`).
 
-**Work ticket** (implementation repo; keep dev running and document URL/auth in **AGENTS.md**): grill (plan includes **Functional checks**) → Matt **implement** (TDD, code-review, commit with `(PRY-XXX)`) → **functional-test** (detects harness + available browser tools; smoke matrix when needed; `report.md`, screenshots, and `manual-reproduction.md` under `Proyect/Tickets/PRY-XXX/validation/`). Sequencing is in **bluesurf-ticket**; Matt Pocock skills stay unchanged.
+**Work ticket:** grill → **implement** → **functional-test** (`Tickets/PRY-XXX/validation/`) → **complete** when **AGENTS.md** **Ticket done** gates are true.
 
-**Complete the ticket** only after functional-test passes **and** every gate in that repo’s **AGENTS.md** **Ticket done** section is true. Commit and push is push permission. It deletes the vault folder only when **Ticket done** lists that push as a gate.
-
-| What happened | What the agent does |
-| --- | --- |
-| **Ticket done** gates are all true | Deletes `Proyect/Tickets/PRY-XXX/` from the vault (including `validation/`). |
-| “Commit and push” | Commits if needed and pushes the **implementation repo**. Then re-reads **Ticket done**. |
-| **Ticket done** missing or still `FILL` | Stops and asks you to fill it from the template. The vault folder stays. |
-
-Same as the CLIs:
+**Complete:** `bluesurf ticket-done PRY-XXX` (use `--cwd <impl-repo>` when workstore comes from that repo’s `project.toml`). **AGENTS.md** lists implementation gates; whether the workstore folder is **deleted** is config: `ticket.done.delete_folder` (`bluesurf config get ticket.done.delete_folder`).
 
 ```bash
-npm run ticket -- PRY-XXX
-npm run ticket-done -- PRY-XXX
+bluesurf ticket PRY-XXX
+bluesurf ticket-done PRY-XXX
 ```
 
 ## `/bluesurf-sprint`
 
-Snapshot your assigned tickets on the current Surf sprint into Obsidian.
-
-**Say:** `/bluesurf-sprint`, “sprint note”, or “current sprint”.
-
-**Does:**
-
-1. Opens Chromium briefly to reuse the saved session.
-2. Loads tickets assigned to you on the latest sprint (highest-numbered `currentSprintName` on your cards; falls back to the most common `currentSprintId` if names have no number).
-3. For each ticket, reads reported hours from the work item (`totalExecuted`), not the board’s inflated `totalHours`.
-4. Writes or **rewrites** the note for that sprint (`Proyect/Sprints/Sprint N.md`).
-
-**Vault file:** `Proyect/Sprints/Sprint N.md` (e.g. `Sprint 14.md`); later runs update the same file.
-
-**Tables:**
-
-- **Pending Tickets** — `Development (IN PROGRESS)`, `Analysis (IN PROGRESS)`, `Analysis (DONE)`, and any `BLOCKED` status
-- **Done Tickets** — everything else
-
-Each table is ordered by priority. Columns: ticket (wiki link to `<OBSIDIAN_TICKETS_DIR>/PRY-XXX/detail`), title, estimate, effort (hours already reported), type, status, priority, tags.
-
-Does not pull a single ticket unless you ask.
+Snapshot your assigned tickets on the **current** sprint into the workstore (`Sprints/Sprint N.md`).
 
 ```bash
-npm run sprint
-npm run sprint -- RLD
+bluesurf sprint
+bluesurf sprint --project RLD --cwd ~/path/to/repo
 ```
+
+Pending / done tables, priority sort (configurable). Reported hours from `totalExecuted`.
 
 ## `/bluesurf-sprint-review`
 
-Snapshot your assigned tickets on the **previous** Surf sprint (or a sprint number you name) into Obsidian.
-
-**Say:** `/bluesurf-sprint-review`, “sprint review”, “review last sprint”, or “how did last sprint go” (export, then summarize from the note).
-
-**Does:** same tables as the current-sprint snapshot, but for Sprint N−1 by default (highest sprint on your cards minus one). Only tickets whose **current** Surf sprint name still matches that sprint.
-
-```bash
-npm run sprint-review              # previous sprint
-npm run sprint-review -- RLD 13    # explicit sprint number
-```
-
-If you have no assigned tickets on that sprint, nothing is written to the vault.
+Previous sprint (or explicit number): `bluesurf sprint-review` or `bluesurf sprint-review --sprint 13`.
 
 ## `/bluesurf-move`
 
-Move a ticket to another status on the board. The team sees the change, so the skill always previews and asks first.
-
-**Say:** “move RLD-388 to dev done”, “I finished 388”, “mark 387 as blocked”.
-
-**Does:** looks up the ticket's type (each type has its own board and status ids), matches the status name loosely, and prints the planned move. With `--yes` it moves the card to the top of that column (`POST /api/WorkItem/{id}/moveOnBoard/{statusId}/0`), checks Surf's answer, and sends the `ProjectUpdated` hub message the board UI sends so teammates' open boards refresh.
+Preview, then move with `--yes` (skill should preview first).
 
 ```bash
-npm run move -- RLD-388 "dev done"         # preview only, changes nothing
-npm run move -- RLD-388 "dev done" --yes   # move it
+bluesurf move RLD-388 "dev done"
+bluesurf move RLD-388 "dev done" --yes
 ```
 
 ## `/bluesurf-mine`
 
-List the tickets assigned to you across **every** sprint. Read-only; nothing is written to the vault.
-
-**Say:** `/bluesurf-mine`, “my tickets”, or “what’s assigned to me”.
-
-**Does:** loads your assigned cards, hides any `DONE` status, and groups the rest by sprint (newest first, no sprint last), ordered by priority. Agents call it with `--json`.
+List assigned tickets (`--json`, `--all` for DONE).
 
 ```bash
-npm run mine            # open tickets
-npm run mine -- --all   # include DONE
-npm run mine -- --json  # machine-readable, for agents
+bluesurf mine --json
 ```
 
 ## `/bluesurf-daily-report`
 
-Fill your Surf daily report for a day (**Save** only — you still confirm in the UI).
-
-**Say:** `/bluesurf-daily-report`, “capture hours”, “daily report”, or “report time for yesterday”.
-
-**Does:** `fetch` loads the day, calendar, categories, and projects; `plan` builds an 8h draft (calendar + `--ticket` lines); `apply` POSTs **`status: 0`** only.
+`fetch` · `plan` · `apply` (draft **Save** only). Hours cap from config (`daily_report.hours_cap`, default 8).
 
 ```bash
-npm run daily-report -- fetch 2026-11-05 --json
-npm run daily-report -- plan 2026-11-05 --ticket RLD-100:2 --json
-npm run daily-report -- apply 2026-11-05 --ticket RLD-100:2
+bluesurf daily-report fetch 2026-11-05 --json
+bluesurf daily-report plan 2026-11-05 --ticket RLD-100:2 --json
+bluesurf daily-report apply 2026-11-05 --ticket RLD-100:2
 ```
 
-## Commands
+## CLI reference
 
 | Command | Purpose |
 | --- | --- |
-| `npm run setup` | Install skills and rules for Cursor, Codex, and/or Claude Code, then sign in if needed |
-| `npm run login` | Sign in once; saves the session to `.surf-cookies.json` |
-| `npm run ticket -- PRY-XXX` | Write ticket note + attachments |
-| `npm run ticket-done -- PRY-XXX` | Delete that ticket folder from the vault |
-| `npm run sprint` | Write or rewrite the current-sprint note |
-| `npm run sprint-review` | Write or rewrite a past-sprint review note (default: previous sprint) |
-| `npm run move -- RLD-388 "dev done"` | Preview a status move; add `--yes` to move |
-| `npm run mine` | List your open tickets across all sprints (`--all`, `--json`) |
-| `npm run daily-report -- fetch\|plan\|apply DATE` | Daily report draft save (`--ticket CODE:hours`, `--json`) |
+| `bluesurf setup` | Wizard: workstore, harnesses, Matt Pocock skills, Blue Surf symlinks, rules, login if needed |
+| `bluesurf init` | Implementation repo: `AGENTS.md`, `.surf/project.toml`, `.cursor/rules` |
+| `bluesurf login` | SSO in a window; session under `~/.local/share/bluesurf/session/` |
+| `bluesurf doctor` | PATH, config, workstore, session, Node version |
+| `bluesurf upgrade` | Relink bundled skills (+ optional `--with-matt`) |
+| `bluesurf config get <key>` | Merged config value (e.g. `ticket.done.delete_folder`) |
+| `bluesurf ticket`, `ticket-done`, `sprint`, `sprint-review`, `mine`, `move`, `daily-report` | Surf client (see `--cwd`, `--project`, `--json`) |
+| `npm run …` | Thin wrappers around the same CLI (handy in this clone) |
 | `npm test` | Unit tests |
-| `npm run spike` | Record Surf XHR (only if the API map in `docs/design.md` is stale) |
+
+Full spec: [docs/cli-spec.md](docs/cli-spec.md).
 
 ## Safety
 
-- Do not commit `.chrome-profile/`, `.surf-cookies.json`, `.scratch/`, or `.env` (`.surf-cookies.json` is your live Surf session; it is written with mode 600)
-- Share this repo by **git clone**, not by copying the whole checkout folder (that folder can hold your session and spike captures)
-- `BLUESURF_HEADED=1` shows the browser window, for debugging
-- Do not put passwords in this repo
-- Never `POST /api/login` from our code
-- Never push unless you explicitly ask (or say **commit and push** on a pulled ticket). That phrase is push permission. Ticket-done follows **Ticket done** in the implementation repo’s **AGENTS.md**.
-- Prefer the **skills** for move and ticket completion: `bluesurf-move` previews and asks before changing the board; raw `npm run move … --yes` skips that guardrail
+- Do not commit session files, `.env`, `.chrome-profile/`, or `.scratch/`
+- Share via **git clone**; each person runs **`bluesurf setup`** and **`bluesurf login`**
+- `BLUESURF_HEADED=1` shows the browser for debugging
+- Never `POST /api/login` from this code
+- Prefer **bluesurf-move** in chat over raw `bluesurf move … --yes` without preview
+- Push only when you explicitly ask; **Ticket done** in the implementation **AGENTS.md** is the gate list
 
 ### For colleagues
 
-Each person clones the repo and runs `npm run setup`, which writes `.env` when it is missing, asks for `OBSIDIAN_VAULT`, and keeps the Surf session on their machine. Rules for the harnesses they pick live in [`rules/`](rules/).
+Clone → `npm install` → `npm link` (or `npm i -g` when published) → **`bluesurf setup`**. Tune behavior in `~/.config/bluesurf/config.toml`. Per repo: **`bluesurf init`** and fill **AGENTS.md**.
 
-- **Bugs Detected** tickets skip the grill question: the agent implements from the ticket’s **Comments** (copied from Surf). Treat pulled tickets like Surf content you already trust.
-- **Attachments** download into the vault under `Proyect/Tickets/<code>/attachments/` (your vault may sync via iCloud or similar).
-- **Commit and push** on a pulled ticket is explicit permission to push the implementation repo for that ticket.
+After `git pull` here: `bluesurf upgrade` or re-link skills (`npm run link-skills`). New skill directory? Re-run setup for your harnesses.

@@ -1,3 +1,5 @@
+import { formatDescription } from "./description-format.js";
+
 export function parseTicketKey(code) {
   const match = /^([A-Z]+)-\d+$/.exec(code);
   if (!match) {
@@ -94,6 +96,19 @@ export function listMyCurrentSprintWorkItems(kanban) {
 
 export function sortByPriority(items) {
   return [...items].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+}
+
+export function sortWorkItems(items, mode = "priority") {
+  const copy = [...items];
+  if (mode === "code") {
+    return copy.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+  }
+  if (mode === "status") {
+    return copy.sort((a, b) =>
+      String(a.statusName ?? "").localeCompare(String(b.statusName ?? "")),
+    );
+  }
+  return sortByPriority(copy);
 }
 
 function isPendingSprintStatus(status) {
@@ -195,10 +210,14 @@ function commentBlocks(comments) {
     .map((entry) => `**${entry.createdByFullName ?? ""}**\n\n${commentBody(entry)}`);
 }
 
-export function toTicketNote(item) {
+export function toTicketNote(
+  item,
+  { descriptionFormat = "html", bugsDetectedTag = "Bugs Detected" } = {},
+) {
   const tags = (item.tags ?? []).map((tag) => tag.tagName).filter(Boolean);
   const attachments = (item.files ?? []).map((file) => file.name).filter(Boolean);
   const estimate = item.estimatedEffort ?? 0;
+  const body = formatDescription(item.description ?? "", descriptionFormat);
   const lines = [
     `# ${item.code} — ${item.name}`,
     "",
@@ -212,10 +231,10 @@ export function toTicketNote(item) {
     "",
     "## Description",
     "",
-    item.description ?? "",
+    body,
     "",
   ];
-  if (tags.includes("Bugs Detected")) {
+  if (tags.includes(bugsDetectedTag)) {
     lines.push("## Comments", "", commentBlocks(item.comments).join("\n\n"), "");
   }
   return lines.join("\n");

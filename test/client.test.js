@@ -187,6 +187,6 @@ describe("createClient", () => {
         "GET /api/workItem/RLD-336": { status: 401, body: "" },
       }),
     });
-    await assert.rejects(() => client.getWorkItem("RLD-336"), /npm run login/);
+    await assert.rejects(() => client.getWorkItem("RLD-336"), /bluesurf login/);
   });
 });

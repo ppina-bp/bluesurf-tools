@@ -1,28 +1,35 @@
 # Blue Surf tools
 
-Local client for one person's Blue Surf session, plus the skills and rules that harnesses load for the engineering workflow around it.
+Local **`bluesurf`** CLI, Surf session replay, and harness skills/rules for the engineering workflow around Blue Surf tickets.
+
+See also: [docs/cli-spec.md](docs/cli-spec.md), [docs/design.md](docs/design.md).
 
 ## Language
 
 **Harness**:
-Cursor, Codex, or Claude Code. Each one loads skills and rules from its own configuration.
+Cursor, Codex, or Claude Code. Each loads skills and rules from its own configuration.
 _Avoid_: agent, IDE, tool
 
+**bluesurf CLI**:
+The `bluesurf` command on PATH (`@bluepeople/bluesurf`). Agents invoke `bluesurf ticket`, `login`, etc. — not `npm run` from a clone.
+_Avoid_: npm scripts (for agents)
+
+**Workstore**:
+Directory tree where ticket and sprint notes are written (`Tickets/<code>/`, `Sprints/` by default). Can be an Obsidian vault, any folder, XDG local storage, or `.bluesurf/` in a repo. Resolved from `~/.config/bluesurf/config.toml` and `.surf/project.toml`.
+_Avoid_: vault (unless user means Obsidian), OBSIDIAN_VAULT
+
 **Blue Surf skills**:
-The skills that talk to Surf and Obsidian: ticket, sprint, sprint-review, move, and mine.
+Skills in this package that call the CLI: ticket, sprint, sprint-review, move, mine, daily-report, plus **functional-test** (orchestrated by **bluesurf-ticket**).
 
 **Implementation AGENTS template**:
-`templates/AGENTS.md.template` — copy into each app repo as `AGENTS.md` for functional testing, branch/environment tables, local commands, and the **Ticket done** gates.
-_Avoid_: Surf commands, the CLI
+`templates/AGENTS.md.template` — copied by **`bluesurf init`** (or by hand) into each app repo as `AGENTS.md`: Verify, functional testing, branches, **Ticket done** gates.
 
 **Matt Pocock skills**:
-The external engineering skills the router sends work to, such as grill, spec, implement, and review (from mattpocock/skills — treat as immutable). **functional-test** is a Blue Surf skill in this repo, orchestrated by **bluesurf-ticket** after implement.
-_Avoid_: the workflow, the skill pack
+External skills from mattpocock/skills (immutable). Router in global rules sends work there; **bluesurf-ticket** orchestrates Surf-only steps after **implement**.
 
 **Managed section**:
-The part of a harness rules file that setup owns and replaces on the next run.
-_Avoid_: the rules file
+Marked block in `~/.codex/AGENTS.md` / `~/.claude/CLAUDE.md` that **`bluesurf setup`** replaces on refresh.
 
 **Setup**:
-This machine's skills, rules, and Surf session for the harnesses you use.
-_Avoid_: bootstrap
+**`bluesurf setup`** — machine: config, harnesses, Matt Pocock install, skill symlinks, rules, login if needed. **`bluesurf init`** — one implementation repo.
+_Avoid_: bootstrap (use setup/init)

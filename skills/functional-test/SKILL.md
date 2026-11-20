@@ -1,6 +1,6 @@
 ---
 name: functional-test
-description: Mandatory next step after implement and code-review on a bluesurf-ticket — same agent turn, no waiting for a new user prompt. Run harness AskQuestion for UI runner choice, then smoke matrix and harness-aware browser (Cursor integrated browser, Claude in Chrome, Codex browser MCP) or Playwright fallback; write report, screenshots, and manual-reproduction under Proyect/Tickets/{code}/validation/. Also when the user asks for functional or acceptance testing on a Surf ticket.
+description: Mandatory next step after implement and code-review on a bluesurf-ticket — same agent turn, no waiting for a new user prompt. Run harness AskQuestion for UI runner choice, then smoke matrix and harness-aware browser (Cursor integrated browser, Claude in Chrome, Codex browser MCP) or Playwright fallback; write report, screenshots, and manual-reproduction under the workstore Tickets/{code}/validation/. Also when the user asks for functional or acceptance testing on a Surf ticket.
 ---
 
 Blue Surf acceptance layer after Matt Pocock **implement** (which already ran **tdd**, **code-review**, and **commit**). Hard gate for **bluesurf-ticket** complete.
@@ -24,7 +24,7 @@ Settled before you start:
 3. **Verify** — the implementation repo **AGENTS.md** **Verify (CI and local gates)** commands were run and passed (same bar as CI/actions). If that section is missing, ask the human to add it from `bluesurf-tools/templates/AGENTS.md.template`.
 4. **Dev server** — the human already runs the app. Read the implementation repo **AGENTS.md** (from `bluesurf-tools/templates/AGENTS.md.template` if missing, ask the human to add it). Use base URL, health endpoint, and auth from the **Functional testing** section. Fail fast if health check fails; tell the human to start dev per AGENTS.md.
 5. **Ticket key** — e.g. `PRY-XXX` (project code + number) for vault paths.
-6. **Validation folder** — know the write path: `Proyect/Tickets/{code}/validation/` (create when saving artifacts).
+6. **Validation folder** — workstore `Tickets/{code}/validation/` (create when saving artifacts).
 
 ## Process
 
@@ -145,11 +145,11 @@ Spawn a **Task** subagent (generalPurpose or equivalent):
 
 Return pass/fail, commands run, screenshot paths, and detail for **Manual reproduction**.
 
-### 9. Validation folder (vault)
+### 9. Validation folder (workstore)
 
-Under the BluePeople vault (`OBSIDIAN_VAULT`):
+Under the resolved workstore (`bluesurf config get` / `.surf/project.toml`):
 
-`Proyect/Tickets/{code}/validation/`
+`Tickets/{code}/validation/`
 
 Write regardless of runner:
 
