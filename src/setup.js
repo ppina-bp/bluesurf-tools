@@ -1,7 +1,12 @@
-import { access, lstat, mkdir, readdir, readFile, symlink, unlink, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, readdir, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { defaultConfig } from "./config/defaults.js";
+import { deepMerge } from "./config/merge.js";
+import { readTomlFile, writeTomlFile } from "./config/toml.js";
+import { globalConfigPath } from "./paths.js";
 import { skillsCliPackage } from "./skills-cli.js";
+import { resolveSetupAnswers } from "./wizard-answers.js";
 
 const ORDER = ["cursor", "codex", "claude"];
 
@@ -34,14 +39,6 @@ const SKILL_DIRS = {
   claude: [".claude", "skills"],
 };
 
-const MENU = `Which harnesses should setup install?
-1) Cursor
-2) Codex
-3) Claude Code
-all) All three
-
-Enter numbers separated by spaces (for example: 1 3), or all.`;
-
 export async function setup({
   args = [],
   repoRoot,
@@ -49,27 +46,62 @@ export async function setup({
   home,
   env = {},
   stdinIsTTY = false,
-  prompt,
+  ask,
   run,
   nodeVersion = process.version,
-}) {
-  const harnesses = args.length === 0
-    ? await harnessesFromPrompt({ stdinIsTTY, prompt })
-    : harnessesFromArgs(args);
-  const warnings = await ensureEnv({ repoRoot, env, stdinIsTTY, prompt });
-  await runStep(run, "npm", ["install"], repoRoot);
+  cwd = process.cwd(),
+  onStep,
+} = {}) {
+  const existing = await readExistingConfig(home);
+  const answers = await collectSetupAnswers({
+    argv: args,
+    env,
+    existing,
+    stdinIsTTY,
+    cwd,
+    home,
+    ask,
+  });
+  await ensureWorkstoreDirectory(answers.directory);
+  const config = deepMerge(existing ?? defaultConfig(), {
+    surf: { project_code: answers.projectCode },
+    workstore: {
+      kind: answers.workstoreKind,
+      root: answers.workstoreKind === "path" ? answers.workstoreRoot : "",
+      layout: {
+        tickets: answers.ticketsDir,
+        sprints: answers.sprintsDir,
+      },
+    },
+    harnesses: { enabled: answers.harnesses },
+    ticket: {
+      after_pull: answers.afterPull,
+      done: { delete_folder: answers.deleteFolder },
+    },
+    pull: { download_attachments: answers.downloadAttachments },
+  });
+  await writeTomlFile(globalConfigPath(home), config);
+
+  const warnings = await ensureEnv({
+    repoRoot,
+    env: { ...env, OBSIDIAN_VAULT: answers.directory },
+    stdinIsTTY: false,
+  });
+  await runStep(run, "npm", ["install"], repoRoot, onStep, "Installing dependencies");
   const skillsCli = skillsCliPackage(nodeVersion);
   if (skillsCli !== "skills@latest") {
     warnings.push(
       `Node ${nodeVersion} is below 22.20.0; Matt Pocock skills install uses ${skillsCli}. Upgrade Node to use skills@latest.`,
     );
   }
-  await runStep(run, "npx", mattPocockArgs(harnesses, skillsCli), repoRoot);
+  const harnesses = answers.harnesses;
+  await runStep(run, "npx", mattPocockArgs(harnesses, skillsCli), repoRoot, onStep, "Installing Matt Pocock skills");
   const skillsRoot = skillsRepoRoot ?? repoRoot;
   const skills = await linkBlueSurfSkills({ repoRoot: skillsRoot, home, harnesses });
   await installRules({ repoRoot, home, harnesses, warnings });
+  await removeHarnessInstall({ repoRoot: skillsRoot, home, harnesses: answers.removedHarnesses });
   const loggedIn = await loginIfNeeded({ repoRoot, run, home });
-  return { harnesses, warnings, loggedIn };
+  return { harnesses, warnings, loggedIn, skills };
 }
 
 function mattPocockArgs(harnesses, skillsCli) {
@@ -86,8 +118,9 @@ function mattPocockArgs(harnesses, skillsCli) {
   ];
 }
 
-async function runStep(run, command, args, cwd) {
-  const result = await run(command, args, { cwd });
+async function runStep(run, command, args, cwd, onStep, label) {
+  const exec = () => run(command, args, { cwd, stdio: onStep ? "pipe" : "inherit" });
+  const result = onStep && label ? await onStep(label, exec) : await exec();
   if (!result || result.code !== 0) {
     const detail = result?.stderr ? `: ${result.stderr}` : "";
     throw new Error(`${command} ${args.join(" ")} exited with code ${result?.code ?? "unknown"}${detail}`);
@@ -107,46 +140,91 @@ async function loginIfNeeded({ repoRoot, run, home }) {
   return true;
 }
 
-async function harnessesFromPrompt({ stdinIsTTY, prompt }) {
-  if (!stdinIsTTY) {
-    throw new Error("No harness selected. Re-run with --cursor, --codex, --claude, or --all.");
+async function collectSetupAnswers({ argv, env, existing, stdinIsTTY, cwd, home, ask }) {
+  const prompted = {};
+  for (;;) {
+    const resolved = resolveSetupAnswers({
+      argv,
+      env,
+      existing,
+      stdinIsTTY,
+      cwd,
+      home,
+      prompted,
+    });
+    if (!resolved.ok) throw new Error(resolved.error);
+    if (resolved.prompt.length === 0) return resolved.answers;
+    if (!ask) throw new Error(`Missing answer for ${resolved.prompt[0]}. Re-run with a flag or a terminal.`);
+    const value = await ask(resolved.prompt[0], resolved.answers);
+    if (value == null) {
+      const error = new Error("Setup cancelled.");
+      error.cancelled = true;
+      throw error;
+    }
+    prompted[resolved.prompt[0]] = value;
   }
-  const answer = await prompt(MENU);
-  return harnessesFromMenu(answer);
 }
 
-function harnessesFromMenu(answer) {
-  const text = answer.trim().toLowerCase();
-  if (text === "all") return [...ORDER];
-  const picked = [];
-  for (const token of text.split(/[\s,]+/).filter(Boolean)) {
-    const name = { 1: "cursor", 2: "codex", 3: "claude" }[token];
-    if (!name) {
-      throw new Error(`Unknown choice ${token}. Enter 1, 2, 3, or all.`);
-    }
-    picked.push(name);
+async function readExistingConfig(home) {
+  try {
+    return await readTomlFile(globalConfigPath(home));
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
   }
-  if (picked.length === 0) {
-    throw new Error("Choose at least one harness, or all.");
-  }
-  return ORDER.filter((name) => picked.includes(name));
 }
 
-function harnessesFromArgs(args) {
-  const picked = [];
-  for (const arg of args) {
-    if (arg === "--all") continue;
-    const name = FLAGS[arg];
-    if (!name) {
-      throw new Error(`Unknown argument ${arg}. Use --cursor, --codex, --claude, or --all.`);
+async function ensureWorkstoreDirectory(directory) {
+  if (!directory) throw new Error("Workstore path is required.");
+  try {
+    const info = await stat(directory);
+    if (!info.isDirectory()) throw new Error(`Workstore path is not a directory: ${directory}`);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await mkdir(directory, { recursive: true });
+  }
+}
+
+async function removeHarnessInstall({ repoRoot, home, harnesses }) {
+  if (!harnesses?.length) return;
+  const skills = await listBlueSurfSkills(repoRoot);
+  for (const harness of harnesses) {
+    for (const name of skills) {
+      await unlinkIfSymlink(path.join(home, ...SKILL_DIRS[harness], name));
     }
-    picked.push(name);
   }
-  if (args.includes("--all")) return [...ORDER];
-  if (picked.length === 0) {
-    throw new Error("Choose a harness with --cursor, --codex, --claude, or --all.");
+  if (harnesses.includes("cursor")) {
+    for (const fileName of RULE_FILES) {
+      await rm(path.join(home, ".cursor", "rules", fileName.replace(/\.md$/, ".mdc")), { force: true });
+    }
   }
-  return ORDER.filter((name) => picked.includes(name));
+  if (harnesses.includes("codex")) await stripManagedFile(path.join(home, ".codex", "AGENTS.md"));
+  if (harnesses.includes("claude")) await stripManagedFile(path.join(home, ".claude", "CLAUDE.md"));
+}
+
+async function unlinkIfSymlink(dest) {
+  try {
+    const stat = await lstat(dest);
+    if (stat.isSymbolicLink()) await unlink(dest);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+async function stripManagedFile(filePath) {
+  let existing;
+  try {
+    existing = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return;
+    throw error;
+  }
+  const start = existing.indexOf(MANAGED_START);
+  const end = existing.indexOf(MANAGED_END);
+  if (start === -1 || end < start) return;
+  const next = `${existing.slice(0, start)}${existing.slice(end + MANAGED_END.length)}`.replace(/^\n+/, "");
+  if (!next.trim()) await rm(filePath, { force: true });
+  else await writeFile(filePath, next.endsWith("\n") ? next : `${next}\n`);
 }
 
 async function ensureEnv({ repoRoot, env, stdinIsTTY, prompt }) {
@@ -219,7 +297,24 @@ export async function linkBlueSurfSkills({ repoRoot, home, harnesses }) {
   return skills;
 }
 
-export { harnessesFromArgs, ORDER as HARNESS_ORDER, SKILL_DIRS };
+export function harnessesFromArgs(args) {
+  const picked = [];
+  for (const arg of args) {
+    if (arg === "--all") continue;
+    const name = FLAGS[arg];
+    if (!name) {
+      throw new Error(`Unknown argument ${arg}. Use --cursor, --codex, --claude, or --all.`);
+    }
+    picked.push(name);
+  }
+  if (args.includes("--all")) return [...ORDER];
+  if (picked.length === 0) {
+    throw new Error("Choose a harness with --cursor, --codex, --claude, or --all.");
+  }
+  return ORDER.filter((name) => picked.includes(name));
+}
+
+export { ORDER as HARNESS_ORDER, SKILL_DIRS };
 
 async function installRules({ repoRoot, home, harnesses, warnings }) {
   const rules = [];
