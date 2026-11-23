@@ -64,7 +64,13 @@ export async function main(argv) {
 function printHelp() {
   console.log(`bluesurf — Blue Surf CLI
 
-  bluesurf setup | init | login | doctor | upgrade [--with-matt]
+  bluesurf setup [--all | --cursor --codex --claude] [--workstore path|local]
+               [--workstore-root path] [--tickets-dir name] [--sprints-dir name]
+               [--project code] [--delete-folder | --no-delete-folder]
+               [--download-attachments | --no-download-attachments]
+               [--after-pull ask|grill|implement]
+  bluesurf init [--cwd path] [--project code] [--in-repo] [--tracked | --no-tracked]
+  bluesurf login | doctor | upgrade [--with-matt]
   bluesurf config get <dot.key> [--cwd path]
   bluesurf ticket <CODE> | ticket-done <CODE> | sprint | sprint-review | mine | move | daily-report
   Use --cwd <path> on workstore-aware commands. Global flags: --project, --json, --yes, --all, --headed

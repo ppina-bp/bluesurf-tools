@@ -40,9 +40,11 @@ bluesurf setup --all
 bluesurf setup --cursor --claude
 ```
 
-**Workstore** (first-time wizard):
+In a terminal, setup asks for anything you did not pass as a flag: harnesses, workstore kind, ticket and sprint folder names, project code, whether ticket-done deletes the folder, whether to download attachments, and what to do after a pull. A flag or an existing `OBSIDIAN_VAULT` / `BLUESURF_WORKSTORE_ROOT` / `BLUESURF_WORKSTORE_KIND` in the process environment skips that question. Esc cancels before anything is written.
 
-1. **Folder on disk** — any path (Obsidian vault, `~/Notes`, etc.).
+**Workstore:**
+
+1. **Folder on disk** — any path (Obsidian vault, `~/Notes`, etc.). A missing folder is created.
 2. **Local per project** — `~/.local/share/bluesurf/workstore/<project_code>/` (default layout `Tickets/`, `Sprints/`).
 
 Repo-local workstore (`.bluesurf/`) is **not** set here; use **`bluesurf init`** in each implementation repo.
@@ -58,7 +60,7 @@ Setup then:
    - **Codex / Claude:** managed block in `~/.codex/AGENTS.md` / `~/.claude/CLAUDE.md`.
 6. Runs **`bluesurf login`** when no session exists under `~/.local/share/bluesurf/session/`.
 
-Re-run setup to refresh selected harnesses. It does not uninstall a harness you skip.
+A later setup loads `config.toml` and keeps keys the wizard does not ask. A harness flag adds that harness. In a terminal, clearing a harness removes that harness’s own Blue Surf skill links and rules. Shared `~/.agents/skills` links and Matt Pocock skills stay.
 
 Non-interactive workstore (CI / script):
 
@@ -90,13 +92,15 @@ cd ~/Projects/my-app
 bluesurf init
 ```
 
+Run it from the git root. Init confirms that root, then asks for the project code and whether notes stay in the global workstore or in `.bluesurf/`. For an in-repo workstore it asks whether git should track that folder. `--cwd <path>` skips the root confirm. `--in-repo` and `--tracked` / `--no-tracked` skip those questions. Esc cancels before any file is written. A later init rewrites `.surf/project.toml` only; an existing `AGENTS.md` and `.cursor/rules/bluesurf-project.mdc` stay.
+
 Creates (when missing):
 
 - **`AGENTS.md`** from [`templates/AGENTS.md.template`](../templates/AGENTS.md.template) — fill every `FILL:` (commands, Verify, functional testing, **Ticket done**).
 - **`.surf/project.toml`** — `project_code`, optional overrides (e.g. `ticket.done.delete_folder = false`, `workstore.kind = "repo"` + `.bluesurf/`).
 - **`.cursor/rules/bluesurf-project.mdc`** — short repo reminder.
 
-Repo workstore default: **`.bluesurf/`** with **`.gitignore`** entry (notes stay local unless you set `workstore.vcs.tracked = true`).
+In-repo workstore: **`.bluesurf/`** is created, and `.gitignore` gains a `.bluesurf/` line unless you track it. Turning tracking on removes that line and leaves every other gitignore line. Switching back to the global workstore does not delete `.bluesurf/`.
 
 Agents run ticket commands with **`--cwd`** pointing at this repo when workstore is defined in `project.toml`.
 

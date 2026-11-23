@@ -81,6 +81,23 @@ Flags (non-exhaustive):
 - `--project <code>` — override `[surf].project_code` for one invocation
 - `--json` — machine-readable output where supported
 
+Wizard flags skip that question even in a terminal. `setup` and `init` are the only commands that prompt. Agent commands stay flags and `--json`.
+
+`bluesurf setup` flags, beside `--cursor`, `--codex`, `--claude`, and `--all`:
+
+- `--workstore path|local` — `repo` is rejected; that choice is `bluesurf init --in-repo`
+- `--workstore-root <path>` — not valid with `--workstore local`
+- `--tickets-dir <name>`, `--sprints-dir <name>`
+- `--delete-folder` / `--no-delete-folder`
+- `--download-attachments` / `--no-download-attachments`
+- `--after-pull ask|grill|implement`
+
+A harness flag adds to the saved list. `--all` enables Cursor, Codex, and Claude Code. Only the terminal multiselect can remove a harness.
+
+`bluesurf init` flags: `--cwd <path>`, `--project <code>`, `--in-repo`, `--tracked` / `--no-tracked` (`--tracked` requires `--in-repo`).
+
+Contradictory flags exit before any prompt or write. Resolution order for an answer that was not flagged: process environment (`OBSIDIAN_VAULT`, `BLUESURF_WORKSTORE_ROOT`, `BLUESURF_WORKSTORE_KIND`), then the existing config file. The clone `.env` does not answer the wizard.
+
 ---
 
 ## 4. Workstore backends
@@ -281,14 +298,18 @@ Validation artifacts (functional-test): `{tickets}/{CODE}/validation/` (skill pa
 
 ## 7. `bluesurf setup` wizard (order)
 
-1. Harnesses: Cursor / Codex / Claude (or all)
-2. Workstore mode: **folder path** \| **local share** (`~/.local/share/bluesurf/workstore/<code>/`)
-3. Subdirs: tickets / sprints (defaults `Tickets`, `Sprints`)
-4. `surf.project_code` (default from example or user input)
+Prompt flow (`@clack/prompts`), same family as `npx skills`. A terminal walks every step below that this run did not lock with a flag or workstore environment variable. A later run pre-fills from `config.toml` and writes a merge, so keys outside this list stay. Esc or Ctrl-C writes nothing. A missing workstore root is created before the config file; if that fails, the config stays unwritten.
+
+1. Harnesses: Cursor / Codex / Claude (multiselect; at least one)
+2. Workstore mode: **folder path** | **local share** (`~/.local/share/bluesurf/workstore/<code>/`)
+3. Subdirs: tickets / sprints (defaults `Tickets`, `Sprints`; a blank answer keeps the default)
+4. `surf.project_code` (first run defaults to `RLD`)
 5. Short personalization: `delete_folder`, `download_attachments`, `after_pull`
-6. Optional advanced: remaining keys (or edit `config.toml` later)
-7. `npm install` deps for package; Matt Pocock if enabled; symlink skills; install rules
+6. Optional advanced: edit `config.toml` later. The wizard does not ask those keys.
+7. `npm install`; Matt Pocock via `npx skills` with `-y` (no second wizard); symlink skills; install rules
 8. `bluesurf login` if no session
+
+Clearing a harness in the multiselect removes that harness’s own Blue Surf skill symlinks and the rules setup wrote for it. `~/.agents/skills` and Matt Pocock skills stay. An install failure after the config is written leaves that config in place.
 
 Does **not** set `workstore.kind = "repo"` — that is **`bluesurf init`**.
 
@@ -296,14 +317,12 @@ Does **not** set `workstore.kind = "repo"` — that is **`bluesurf init`**.
 
 ## 8. `bluesurf init` wizard (order)
 
-1. Confirm repo root (`git` preferred)
-2. `project_code` (default from global)
-3. Workstore: inherit global \| **in repo** (`.bluesurf/`)
-4. If repo workstore: `.gitignore` `.bluesurf/` unless `tracked = true`
-5. Overrides only: prompt if user wants different `delete_folder`, `description`, etc.
-6. Write `AGENTS.md` from template (managed markers)
-7. Write `.surf/project.toml` (override-only + `project_code` + repo workstore if any)
-8. Write minimal `.cursor/rules/`
+1. Confirm the git toplevel. `--cwd` skips this and uses the path given. With no terminal, init proceeds only when the current directory is that toplevel; otherwise it exits and names `--cwd`. Answering no exits and names `--cwd`.
+2. `project_code` (default from global config, otherwise `RLD`)
+3. Workstore: inherit global | **in repo** (`.bluesurf/`)
+4. If repo workstore: whether git tracks it. The `.gitignore` line `.bluesurf/` follows that answer, on the first run and on a later one. Other gitignore lines stay. The `.bluesurf/` directory is created and is not deleted when a later init inherits the global workstore.
+
+Files are written only after the last answer. A later init rewrites `.surf/project.toml` (override-only, plus `project_code`, plus a repo workstore when chosen, preserving other keys already in that file). It does not replace an existing `AGENTS.md` or `.cursor/rules/bluesurf-project.mdc`. When those files are missing, init writes `AGENTS.md` from the template and a minimal `.cursor/rules/bluesurf-project.mdc`.
 
 ---
 

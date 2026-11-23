@@ -4,6 +4,9 @@ import { lstat, mkdir, mkdtemp, readFile, readlink, rm, symlink, writeFile } fro
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { globalConfigPath } from "../src/paths.js";
+import { readTomlFile } from "../src/config/toml.js";
+import { writeTomlFile } from "../src/config/toml.js";
 import { linkBlueSurfSkills, setup } from "../src/setup.js";
 
 const RULES = {
@@ -139,17 +142,17 @@ describe("setup", () => {
   });
 
   it("asks which harnesses when no flags are given", async () => {
-    let asked = "";
+    const asked = [];
     await setup(options([], {
-      prompt: async (message) => {
-        asked = message;
-        return "1 3";
+      stdinIsTTY: true,
+      ask: async (key, answers) => {
+        asked.push(key);
+        if (key === "harnesses") return ["cursor", "claude"];
+        return answers[key];
       },
     }));
 
-    assert.match(asked, /Cursor/);
-    assert.match(asked, /Codex/);
-    assert.match(asked, /Claude Code/);
+    assert.deepEqual(asked[0], "harnesses");
     assert.equal(
       await readlink(path.join(home, ".cursor", "skills", "bluesurf-ticket")),
       path.join(repoRoot, "skills", "bluesurf-ticket"),
@@ -199,26 +202,31 @@ describe("setup", () => {
     );
   });
 
-  it("asks for the vault path when .env is missing and OBSIDIAN_VAULT is unset", async () => {
+  it("asks for a workstore folder when none was passed in a terminal", async () => {
     const vault = path.join(root, "vault");
-    let asked = "";
+    const asked = [];
     await setup(options(["--cursor"], {
       env: {},
-      prompt: async (message) => {
-        asked = message;
-        return vault;
+      stdinIsTTY: true,
+      ask: async (key, answers) => {
+        asked.push(key);
+        if (key === "workstoreKind") return "path";
+        if (key === "workstoreRoot") return vault;
+        return answers[key];
       },
     }));
-    assert.match(asked, /OBSIDIAN_VAULT/);
+    assert.ok(asked.includes("workstoreKind"));
+    assert.ok(asked.includes("workstoreRoot"));
     assert.match(await readFile(path.join(repoRoot, ".env"), "utf8"), new RegExp(`OBSIDIAN_VAULT=${vault}`));
   });
 
-  it("refuses to invent a vault path when there is no terminal", async () => {
+  it("refuses to invent a workstore path when there is no terminal", async () => {
     await assert.rejects(
       () => setup(options(["--cursor"], { env: {}, stdinIsTTY: false })),
-      /OBSIDIAN_VAULT/,
+      /--workstore-root/,
     );
     await assert.rejects(lstat(path.join(repoRoot, ".env")));
+    await assert.rejects(lstat(globalConfigPath(home)));
   });
 
   it("warns when an existing .env still has the example vault path", async () => {
@@ -234,17 +242,20 @@ describe("setup", () => {
     assert.ok(result.warnings.some((warning) => warning.includes("/path/to/your/BluePeople/vault")));
   });
 
-  it("warns when the vault path is a file", async () => {
+  it("rejects a workstore path that is a file and writes no config", async () => {
     const file = path.join(root, "vault-file");
     await writeFile(file, "not a directory\n");
-    const result = await setup(options(["--cursor"], { env: { OBSIDIAN_VAULT: file } }));
-    assert.ok(result.warnings.some((warning) => warning.includes(file)));
+    await assert.rejects(
+      () => setup(options(["--cursor"], { env: { OBSIDIAN_VAULT: file } })),
+      /not a directory/,
+    );
+    await assert.rejects(lstat(globalConfigPath(home)));
   });
 
-  it("warns when the vault directory does not exist yet", async () => {
+  it("creates a workstore folder that does not exist yet", async () => {
     const missing = path.join(root, "not-synced-yet");
-    const result = await setup(options(["--cursor"], { env: { OBSIDIAN_VAULT: missing } }));
-    assert.ok(result.warnings.some((warning) => warning.includes(missing)));
+    await setup(options(["--cursor"], { env: { OBSIDIAN_VAULT: missing } }));
+    assert.equal((await lstat(missing)).isDirectory(), true);
     assert.match(await readFile(path.join(repoRoot, ".env"), "utf8"), new RegExp(`OBSIDIAN_VAULT=${missing}`));
   });
 
@@ -405,6 +416,70 @@ Never push until asked, including tags.
     await assert.rejects(lstat(path.join(home, ".agents", "skills", "bluesurf-ticket")));
   });
 
+  it("merges a later setup onto saved config and adds the harness flag", async () => {
+    await writeTomlFile(globalConfigPath(home), {
+      version: 1,
+      surf: { origin: "https://surf.bluepeople.com", project_code: "PRY" },
+      daily_report: { hours_cap: 7.5 },
+      harnesses: { enabled: ["cursor"] },
+      workstore: { kind: "path", root: path.join(root, "vault"), layout: { tickets: "Tickets", sprints: "Sprints" } },
+    });
+    await setup(options(["--codex"], { env: {} }));
+    const config = await readTomlFile(globalConfigPath(home));
+    assert.equal(config.daily_report.hours_cap, 7.5);
+    assert.equal(config.surf.project_code, "PRY");
+    assert.deepEqual(config.harnesses.enabled, ["cursor", "codex"]);
+    assert.equal(
+      await readlink(path.join(home, ".codex", "skills", "bluesurf-ticket")),
+      path.join(repoRoot, "skills", "bluesurf-ticket"),
+    );
+    assert.equal(
+      await readlink(path.join(home, ".cursor", "skills", "bluesurf-ticket")),
+      path.join(repoRoot, "skills", "bluesurf-ticket"),
+    );
+  });
+
+  it("removes a cleared harness's own links and rules and keeps the shared skills", async () => {
+    await setup(options(["--all"]));
+    const cursorRule = path.join(home, ".cursor", "rules", "mine.mdc");
+    await writeFile(cursorRule, "leave me\n");
+    await setup(options([], {
+      stdinIsTTY: true,
+      ask: async (key, answers) => (key === "harnesses" ? ["cursor"] : answers[key]),
+    }));
+
+    assert.equal(
+      await readlink(path.join(home, ".cursor", "skills", "bluesurf-ticket")),
+      path.join(repoRoot, "skills", "bluesurf-ticket"),
+    );
+    assert.equal(
+      await readlink(path.join(home, ".agents", "skills", "bluesurf-ticket")),
+      path.join(repoRoot, "skills", "bluesurf-ticket"),
+    );
+    await assert.rejects(lstat(path.join(home, ".claude", "skills", "bluesurf-ticket")));
+    await assert.rejects(lstat(path.join(home, ".codex", "skills", "bluesurf-ticket")));
+    await assert.rejects(lstat(path.join(home, ".claude", "CLAUDE.md")));
+    await assert.rejects(lstat(path.join(home, ".codex", "AGENTS.md")));
+    assert.equal(await readFile(cursorRule, "utf8"), "leave me\n");
+    assert.match(
+      await readFile(path.join(home, ".cursor", "rules", "no-push-until-i-say-so.mdc"), "utf8"),
+      /Never push until asked/,
+    );
+  });
+
+  it("writes nothing when the wizard is cancelled", async () => {
+    await assert.rejects(
+      () => setup(options([], {
+        stdinIsTTY: true,
+        env: {},
+        ask: async () => null,
+      })),
+      /cancelled/i,
+    );
+    await assert.rejects(lstat(globalConfigPath(home)));
+    await assert.rejects(lstat(path.join(home, ".agents", "skills")));
+  });
+
   it("leaves an existing .env untouched", async () => {
     const envPath = path.join(repoRoot, ".env");
     await writeFile(envPath, "OBSIDIAN_VAULT=/already\n");
@@ -418,10 +493,7 @@ Never push until asked, including tags.
       repoRoot,
       home,
       env: { OBSIDIAN_VAULT: path.join(root, "vault") },
-      stdinIsTTY: true,
-      prompt: async () => {
-        throw new Error("prompt was not expected");
-      },
+      stdinIsTTY: false,
       run: async () => ({ code: 0 }),
       ...extras,
     };
